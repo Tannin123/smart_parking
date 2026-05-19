@@ -96,7 +96,9 @@ MySQL
 - các chức năng như thêm sửa xóa, …
 9. models/
 - chứa
-•	AI model 
+•	AI model
+ Ngiên cứu theo clip này https://youtu.be/Mf8-1IMCnnY?si=FKkZWIf0Kt6S4oW7
+https://www.studocu.vn/vn/document/truong-dai-hoc-sai-gon/lap-trinh-python/do-an-mon-ngon-ngu-lap-trinh-python-ung-dung-quan-ly-bai-xe-thong-minh/133800032?origin=course-trending-3
 
 
 
