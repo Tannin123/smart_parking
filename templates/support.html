@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hỗ Trợ</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/smart_parking.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="top-header">
+            <nav class="top-nav">
+                <ul>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-he-thong">Hệ thống</a>
+                        <ul class="dropdown-menu" id="dropdown-he-thong">
+                            <li onclick="window.location.href='login.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                <span>Đăng Xuất</span>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Đổi Mật Khẩu</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-quan-ly">Quản Lý</a>
+                        <ul class="dropdown-menu" id="dropdown-quan-ly">
+                            <li onclick="window.location.href='employee.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-user"></i>
+                                <span>Nhân Viên</span>
+                            </li>
+                            <li onclick="window.location.href='pricing.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-file-pen"></i>
+                                <span>Cấu hình quản lý</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-thong-ke">Thống Kê</a>
+                        <ul class="dropdown-menu" id="dropdown-thong-ke">
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                                <span>Doanh thu</span>
+                            </li>
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-chart-column"></i>
+                                <span>Thống kê xe</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li><a href="support.html">Trợ Giúp</a></li>
+                </ul>
+            </nav>
+            <div class="clock" id="clock">--:--:--</div>
+        </header>
+
+        <div class="main-wrapper">
+            <aside class="sidebar">
+                <div class="sidebar-menu">
+                    <div class="menu-item" onclick="window.location.href='login.html'">
+                        <i class="fa-solid fa-power-off"></i>
+                        <span>Đăng xuất</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='Dashboard.html'">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Trang chủ</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='report.html'">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Thống kê</span>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content-area">
+                <div class="title-container">
+                    <h1>Hệ Thống Đang Phát Triển</h1>
+                    <hr class="title-line">
+                    <p style="font-size: 16px; margin-top: 20px; max-width: 500px; color: black;">
+                        Hệ thống vẫn đang trong quá trình hoàn thiện. Vui lòng không kêu, dev cũng là con người, thông cảm chờ bản cập nhật tiếp theo.
+                    </p>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="../static/smart_parking.js"></script>
+</body>
+
+</html>

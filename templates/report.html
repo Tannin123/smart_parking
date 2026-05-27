@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống Kê Bãi Xe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="../static/smart_parking.css">
+</head>
+
+<body class="report-page">
+    <div class="app-container">
+        <header class="top-header">
+            <nav class="top-nav">
+                <ul>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-he-thong">Hệ thống</a>
+                        <ul class="dropdown-menu" id="dropdown-he-thong">
+                            <li onclick="window.location.href='login.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                <span>Đăng Xuất</span>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Đổi Mật Khẩu</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-quan-ly">Quản Lý</a>
+                        <ul class="dropdown-menu" id="dropdown-quan-ly">
+                            <li onclick="window.location.href='employee.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-user"></i>
+                                <span>Nhân Viên</span>
+                            </li>
+                            <li onclick="window.location.href='pricing.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-file-pen"></i>
+                                <span>Cấu hình quản lý</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-thong-ke">Thống Kê</a>
+                        <ul class="dropdown-menu" id="dropdown-thong-ke">
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                                <span>Doanh thu</span>
+                            </li>
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-chart-column"></i>
+                                <span>Thống kê xe</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li><a href="support.html">Trợ Giúp</a></li>
+                </ul>
+            </nav>
+            <div class="clock" id="clock">--:--:--</div>
+        </header>
+        <div class="main-wrapper">
+            <aside class="sidebar">
+                <div class="sidebar-menu">
+                    <div class="menu-item" onclick="window.location.href='login.html'">
+                        <i class="fa-solid fa-power-off"></i>
+                        <span>Đăng xuất</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='Dashboard.html'">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Trang chủ</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='nhandien.html'">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Nhận diện</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='report.html'" style="background:#1A476B;">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Thống kê</span>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content-area" style="display:block; padding-top:0; overflow-y:auto;">
+                <div class="tuy-chon">
+                    <div class="tuy-chon-header">
+                        <span><i class="fa-solid fa-sliders" style="margin-right:6px"></i>Tùy Chọn</span>
+                        <i class="fa-solid fa-chevron-up" style="font-size:11px"></i>
+                    </div>
+                    <div class="tuy-chon-body">
+                        <div class="tc-group">
+                            <label>Từ Ngày:</label>
+                            <input type="datetime-local" id="fromDate" value="2024-03-30T00:00:00">
+                        </div>
+                        <div class="tc-group">
+                            <label>Ca Trực:</label>
+                            <select id="catruc">
+                                <option>Tất Cả</option>
+                                <option>Ca Sáng</option>
+                                <option>Ca Chiều</option>
+                                <option>Ca Đêm</option>
+                            </select>
+                        </div>
+                        <div class="tc-group">
+                            <label>Đến Ngày:</label>
+                            <input type="datetime-local" id="toDate" value="2024-03-30T23:59:59">
+                        </div>
+                        <div class="divider-v"></div>
+                        <button class="btn-action btn-tq" onclick="renderTable()">
+                            <i class="fa-regular fa-file-lines"></i> Báo Cáo Tổng Quát
+                        </button>
+                        <select class="report-select">
+                            <option>Tổng Ra(Doanh Thu)</option>
+                            <option>Tổng Vào</option>
+                        </select>
+                        <button class="btn-action btn-excel">
+                            <i class="fa-solid fa-file-excel"></i> Xuất Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="table-section">
+                    <div class="table-scroll">
+                        <table class="stats-table" id="statsTable">
+                            <thead>
+                                <tr>
+                                    <th class="th-group left" style="min-width:110px">Loại Xe</th>
+                                    <th class="th-sub">Doanh Thu</th>
+                                    <th class="th-sub">Tổng Vào</th>
+                                    <th class="th-sub">Tổng Ra</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header blue">
+                            <i class="fa-solid fa-chart-pie"></i> Tỉ Lệ Doanh Thu
+                        </div>
+                        <div class="chart-body donut">
+                            <canvas id="donutChart" width="200" height="200"></canvas>
+                            <div class="donut-label" id="donutLabel">Doanh Thu<br>145.000đ</div>
+                            <div class="legend" id="donutLegend"></div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header pink">
+                            <i class="fa-solid fa-chart-column"></i> Biểu Đồ Tăng Giảm (7 Ngày Trước)
+                        </div>
+                        <div class="chart-body" style="height:220px;">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../static/smart_parking.js"></script>
+</body>
+
+</html>

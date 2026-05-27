@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhận Diện Biển Số - Quản Lý Bãi Xe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/smart_parking.css">
+</head>
+
+<body class="nd-page">
+    <div class="app-container">
+        <header class="top-header">
+            <nav class="top-nav">
+                <ul>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-he-thong">Hệ thống</a>
+                        <ul class="dropdown-menu" id="dropdown-he-thong">
+                            <li onclick="window.location.href='login.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                <span>Đăng Xuất</span>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Đổi Mật Khẩu</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-quan-ly">Quản Lý</a>
+                        <ul class="dropdown-menu" id="dropdown-quan-ly">
+                            <li onclick="window.location.href='employee.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-user"></i>
+                                <span>Nhân Viên</span>
+                            </li>
+                            <li onclick="window.location.href='pricing.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-file-pen"></i>
+                                <span>Cấu hình quản lý</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-thong-ke">Thống Kê</a>
+                        <ul class="dropdown-menu" id="dropdown-thong-ke">
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                                <span>Doanh thu</span>
+                            </li>
+                            <li onclick="window.location.href='report.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-chart-column"></i>
+                                <span>Thống kê xe</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li><a href="support.html">Trợ Giúp</a></li>
+                </ul>
+            </nav>
+            <div class="clock" id="clock">--:--:--</div>
+        </header>
+
+        <div class="main-wrapper">
+            <aside class="sidebar">
+                <div class="sidebar-menu">
+                    <div class="menu-item" onclick="window.location.href='login.html'">
+                        <i class="fa-solid fa-power-off"></i>
+                        <span>Đăng xuất</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='Dashboard.html'">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Trang chủ</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item active" onclick="window.location.href='nhandien.html'">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Nhận diện</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='report.html'">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Thống kê</span>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content-area">
+                <div class="wrap">
+
+                    <!-- PAGE HEADER -->
+                    <div class="page-header">
+                        <h1>
+                            <span class="icon-wrap"><i class="fa-solid fa-camera-retro"></i></span>
+                            Nhận Diện Biển Số
+                        </h1>
+                        <p>Tải ảnh, video hoặc dùng webcam để nhận diện biển số xe tự động</p>
+                    </div>
+
+
+
+                    <!-- MAIN GRID -->
+                    <div class="main">
+
+                        <!-- LEFT COLUMN: INPUT + RESULTS -->
+                        <div class="left-column">
+                            <!-- INPUT PANEL -->
+                            <div class="input-panel">
+                                <div class="panel-header">
+                                    <h2><i class="fa-solid fa-camera"></i> Nhận Diện</h2>
+                                    <p>Tải ảnh, video hoặc dùng webcam</p>
+                                </div>
+                                <div class="toolbar">
+                                <button class="tab-btn active" id="tabBtnImg" onclick="switchTab('img', this)">
+                                    <i class="fa-solid fa-image"></i> Ảnh
+                                </button>
+                                <button class="tab-btn" id="tabBtnVideo" onclick="switchTab('video', this)">
+                                    <i class="fa-solid fa-film"></i> Video
+                                </button>
+                                <button class="tab-btn" id="tabBtnWebcam" onclick="switchTab('webcam', this)">
+                                    <i class="fa-solid fa-circle-dot"></i> Webcam
+                                </button>
+                            </div>
+
+                            <!-- TAB: ẢNH -->
+                            <div id="tab-img" class="tab-pane active">
+                                <div class="tab-label">Chọn ảnh để nhận diện</div>
+                                <div class="upload-area" id="uploadAreaImg"
+                                     onclick="document.getElementById('imgInput').click()">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                    <div class="up-title">Nhấn để chọn ảnh</div>
+                                    <div class="up-hint">Hỗ trợ: JPG, PNG, JPEG, BMP, WEBP</div>
+                                </div>
+                                <input type="file" id="imgInput" accept=".jpg,.jpeg,.png,.bmp,.webp"
+                                       style="display:none" onchange="onImageSelected(event)">
+                                <img id="imgPreview" class="preview-img-left" alt="Xem trước">
+                                <button class="detect-btn" id="btnDetectImg" onclick="detectImage()" disabled>
+                                    <i class="fa-solid fa-magnifying-glass" id="iconImg"></i>
+                                    Nhận Diện Biển Số
+                                </button>
+                            </div>
+
+                            <!-- TAB: VIDEO -->
+                            <div id="tab-video" class="tab-pane">
+                                <div class="tab-label">Chọn video để xử lý</div>
+                                <div class="upload-area" id="uploadAreaVideo"
+                                     onclick="document.getElementById('videoInput').click()">
+                                    <i class="fa-solid fa-file-video"></i>
+                                    <div class="up-title">Nhấn để chọn video</div>
+                                    <div class="up-hint">Hỗ trợ: MP4, AVI, MOV, MKV</div>
+                                </div>
+                                <input type="file" id="videoInput" accept=".mp4,.avi,.mov,.mkv"
+                                       style="display:none" onchange="onVideoSelected(event)">
+                                <div class="file-info" id="videoFileInfo">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span id="videoFilename"></span>
+                                </div>
+                                <button class="detect-btn" id="btnDetectVideo" onclick="detectVideo()" disabled>
+                                    <i class="fa-solid fa-play" id="iconVideo"></i>
+                                    Xử Lý Video
+                                </button>
+                            </div>
+
+                            <!-- TAB: WEBCAM -->
+                            <div id="tab-webcam" class="tab-pane">
+                                <img id="webcamFeed" class="webcam-feed" alt="Webcam">
+                                <div id="webcamPlaceholder" class="webcam-placeholder">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span>Camera chưa bật</span>
+                                </div>
+                                <div class="webcam-btns">
+                                    <button class="detect-btn btn-green" id="btnStartCam" onclick="startWebcam()">
+                                        <i class="fa-solid fa-play"></i> Bật Camera
+                                    </button>
+                                    <button class="detect-btn btn-red" id="btnStopCam" onclick="stopWebcam()" style="display:none;">
+                                        <i class="fa-solid fa-stop"></i> Dừng Camera
+                                    </button>
+                                </div>
+                                <div class="webcam-note">
+                                    Camera tự động nhận diện biển số và lưu vào hệ thống
+                                </div>
+                            </div>
+                            </div><!-- /.input-panel -->
+
+                            <!-- RESULTS PANEL -->
+                            <div class="right">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-list-check"></i> Kết Quả Nhận Diện</h2>
+                                <p id="resultSubtitle">Chưa có kết quả — hãy chọn ảnh hoặc video</p>
+                            </div>
+
+                            <div class="panel-body" id="resultBody">
+                                <div class="result-empty" id="resultEmpty">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <p>Tải ảnh hoặc video<br>để bắt đầu nhận diện</p>
+                                </div>
+
+                                <div id="resultContent" style="display:none; flex-direction:column; gap:8px;">
+                                    <div>
+                                        <div class="result-section-label" style="margin-bottom:5px;">Biển số tìm thấy</div>
+                                        <div class="plate-tags" id="resultPlates"></div>
+                                    </div>
+                                    <img id="resultImage" class="result-image" style="display:none;" alt="Kết quả">
+                                    <div class="result-info" id="resultInfo" style="display:none;">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                        <span id="resultInfoText"></span>
+                                    </div>
+                                    <a id="resultDownload" class="download-link" href="#">
+                                        <i class="fa-solid fa-download"></i> Tải video kết quả
+                                    </a>
+                                </div>
+
+                                <div class="result-error" id="resultError">
+                                    <div class="result-error-msg">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                        <span id="resultErrorText"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-footer">
+                                <button class="btn-reset" id="btnReset" onclick="clearResult()" disabled>
+                                    <i class="fa-solid fa-rotate-left"></i> Làm mới kết quả
+                                </button>
+                            </div>
+                        </div><!-- /.right -->
+                        </div><!-- /.left-column -->
+
+                        <!-- RIGHT COLUMN: VEHICLES -->
+                        <div class="vehicles-panel">
+                            <div class="panel-header">
+                                <h2><i class="fa-solid fa-car"></i> Xe Đã Ra Vào</h2>
+                                <p>Lịch sử xe gần đây</p>
+                            </div>
+                            <div class="panel-body" id="parkingHistoryList" style="padding: 10px;">
+                                <div style="text-align:center; color:#94a3b8; padding:30px 0;">
+                                    <i class="fa-solid fa-inbox" style="font-size:28px; opacity:0.3; display:block; margin-bottom:8px;"></i>
+                                    <p style="font-size:11px; font-weight:500; font-family:Inter,sans-serif;">Đang tải dữ liệu...</p>
+                                </div>
+                            </div>
+                        </div><!-- /.vehicles-panel -->
+
+                    </div><!-- /.main -->
+                </div><!-- /.wrap -->
+            </main>
+        </div>
+    </div>
+
+    <script src="../static/smart_parking.js"></script>
+</body>
+
+</html>

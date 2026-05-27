@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Nhập - Bãi Giữ Xe Thông Minh</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="../static/smart_parking.css">
+</head>
+
+<body>
+    <div class="login-container">
+
+        <div class="branding-col">
+            <img src="../static/image/logo.jpg" alt="Logo Bãi Giữ Xe" class="logo">
+            <h1 class="brand-title">
+                BÃI GIỮ XE<br>
+                <span class="brand-subtitle">THÔNG MINH</span>
+            </h1>
+        </div>
+
+        <div class="form-col">
+            <form id="loginForm" action="#" method="POST" class="login-form">
+
+                <div class="form-group">
+                    <label for="_010_txtTaiKhoan">Tài Khoản</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                            <path
+                                d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512H418.3c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304H178.3z" />
+                        </svg>
+                        <input type="text" id="_010_txtTaiKhoan" name="_010_txtTaiKhoan" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="_010_txtMatKhau">Mật Khẩu</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                            <path
+                                d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z" />
+                        </svg>
+                        <input type="password" id="_010_txtMatKhau" name="_010_txtMatKhau" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="_010_btnDangNhap" class="btn-login">Đăng Nhập</button>
+
+                <a href="#" class="forgot-password">Quên mật khẩu ?</a>
+            </form>
+        </div>
+
+    </div>
+    </main>
+
+    <script src="../static/smart_parking.js"></script>
+
+</body>
+
+</html>

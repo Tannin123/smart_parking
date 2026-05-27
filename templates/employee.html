@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhân Viên – Smart Parking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/smart_parking.css">
+    <style>
+        /* ── PAGE HEADER ──────────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            margin-top: -60px;
+        }
+
+        .page-header h1 {
+            font-size: 19px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Merriweather', serif;
+        }
+
+        .page-header h1 .icon-wrap {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .page-header p {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+            margin-left: 46px;
+        }
+
+        /* ── STATS ROW ────────────────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+            cursor: default;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex-shrink: 0;
+        }
+
+        .si-blue {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .si-green {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .si-purple {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .si-orange {
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1;
+            transition: all 0.4s ease;
+            font-family: 'Merriweather', serif;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-top: 3px;
+        }
+
+        /* ── MAIN GRID ────────────────────────────────────────────── */
+        .main {
+            display: flex;
+            gap: 14px;
+            flex: 1;
+            min-height: 0;
+            align-items: start;
+            position: relative;
+        }
+
+        .resize-divider {
+            position: relative;
+            width: 4px;
+            height: 100%;
+            cursor: col-resize;
+            background: transparent;
+            flex-shrink: 0;
+            margin: 0 5px;
+            z-index: 50;
+            transition: background 0.2s;
+        }
+
+        .resize-divider:hover {
+            background: #2563eb;
+        }
+
+        .resize-divider.active {
+            background: #2563eb;
+        }
+
+        /* ── LEFT: TABLE PANEL ────────────────────────────────────── */
+        .left {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin-right: 7px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .toolbar {
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fff;
+        }
+
+        .search-wrap {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-wrap i {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .search-wrap input {
+            width: 100%;
+            height: 34px;
+            padding: 0 10px 0 32px;
+            font-size: 13px;
+            font-family: 'Merriweather', serif;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #0f172a;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .search-wrap input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            background: #fff;
+        }
+
+        .search-wrap input::placeholder {
+            color: #cbd5e1;
+        }
+
+        .btn-clear {
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Merriweather', serif;
+            white-space: nowrap;
+        }
+
+        .btn-clear:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #374151;
+        }
+
+        .count-chip {
+            font-size: 11px;
+            font-weight: 700;
+            color: #2563eb;
+            background: #eff6ff;
+            padding: 3px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* TABLE */
+        .table-wrap {
+            overflow-y: auto;
+            max-height: 360px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Merriweather', serif;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8fafc;
+            padding: 9px 14px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f8fafc;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover {
+            background: #eaf4fb;
+        }
+
+        tbody tr.selected {
+            background: linear-gradient(90deg, #eff6ff 0%, #f8fafc 100%);
+            border-left: 3px solid #2563eb;
+        }
+
+        tbody tr.selected td:first-child {
+            padding-left: 11px;
+        }
+
+        tbody td {
+            padding: 10px 14px;
+            vertical-align: middle;
+        }
+
+        /* Avatar cell */
+        .emp-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .emp-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f172a;
+            font-family: 'Merriweather', serif;
+        }
+
+        .emp-uname {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+
+        /* Role badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .b-admin {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .b-staff {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .b-guard {
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        /* Status dot */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot-on {
+            background: #10b981;
+            box-shadow: 0 0 0 2px #d1fae5;
+        }
+
+        .dot-off {
+            background: #cbd5e1;
+        }
+
+        .text-on {
+            color: #059669;
+        }
+
+        .text-off {
+            color: #94a3b8;
+        }
+
+        /* Empty state */
+        .empty-row td {
+            padding: 40px 16px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .empty-row i {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+            opacity: .4;
+        }
+
+        /* ── RIGHT: FORM PANEL ────────────────────────────────────── */
+        .right {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 310px;
+            flex-shrink: 0;
+        }
+
+        .panel-header {
+            padding: 14px 16px 12px;
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            flex-shrink: 0;
+        }
+
+        .panel-header h2 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Merriweather', serif;
+        }
+
+        .panel-header p {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 3px;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Form fields */
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field>label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .inp-wrap {
+            position: relative;
+        }
+
+        .inp-wrap i {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .inp-wrap input,
+        .inp-wrap select {
+            width: 100%;
+            height: 36px;
+            padding: 0 10px 0 32px;
+            font-size: 13px;
+            font-family: 'Merriweather', serif;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            background: #f8fafc;
+            color: #0f172a;
+            transition: all 0.2s;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .inp-wrap input:focus,
+        .inp-wrap select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            background: #fff;
+        }
+
+        .inp-wrap input::placeholder {
+            color: #cbd5e1;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .sep {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 2px 0;
+        }
+
+        .sep::before,
+        .sep::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        /* Panel footer buttons */
+        .panel-footer {
+            padding: 10px 16px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            gap: 7px;
+            flex-shrink: 0;
+        }
+
+        .btn-action {
+            flex: 1;
+            height: 36px;
+            border-radius: 9px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Merriweather', serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .btn-action:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+
+        .btn-save:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-new {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+        }
+
+        .btn-new:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-del {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+        }
+
+        .btn-del:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+        }
+
+        /* ── TOAST ────────────────────────────────────────────────── */
+        #toast {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 9999;
+            padding: 11px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Merriweather', serif;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+            transform: translateX(160%);
+            transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        #toast.show {
+            transform: translateX(0);
+        }
+
+        #toast.t-ok {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        #toast.t-err {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        /* ── SKELETON (loading placeholder) ──────────────────────── */
+        @keyframes shimmer {
+            0% {
+                background-position: -400px 0;
+            }
+
+            100% {
+                background-position: 400px 0;
+            }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 6px;
+        }
+
+        /* ── RESPONSIVE ───────────────────────────────────────────── */
+        @media (max-width: 960px) {
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 760px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+
+            .right {
+                order: -1;
+            }
+
+            .table-wrap {
+                max-height: 280px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .stat-value {
+                font-size: 20px;
+            }
+
+            .field-row {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header h1 {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- TOP HEADER -->
+        <header class="top-header">
+            <nav class="top-nav">
+                <ul>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-he-thong">Hệ thống</a>
+                        <ul class="dropdown-menu" id="dropdown-he-thong">
+                            <li onclick="window.location.href='/'" style="cursor:pointer;">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                <span>Đăng Xuất</span>
+                            </li>
+                            <li>
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Đổi Mật Khẩu</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-quan-ly">Quản Lý</a>
+                        <ul class="dropdown-menu" id="dropdown-quan-ly">
+                            <li onclick="window.location.href='/employee'" style="cursor:pointer;">
+                                <i class="fa-solid fa-user"></i>
+                                <span>Nhân Viên</span>
+                            </li>
+                            <li onclick="window.location.href='/pricing.html'" style="cursor:pointer;">
+                                <i class="fa-solid fa-file-pen"></i>
+                                <span>Cấu hình</span>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-container">
+                        <a href="#" id="menu-thong-ke">Thống Kê</a>
+                        <ul class="dropdown-menu" id="dropdown-thong-ke">
+                            <li><i class="fa-solid fa-money-bill-transfer"></i><span>Doanh thu</span></li>
+                            <li><i class="fa-solid fa-chart-column"></i><span>Thống kê xe</span></li>
+                        </ul>
+                    </li>
+                    <li><a href="/support.html">Trợ Giúp</a></li>
+                </ul>
+            </nav>
+            <div class="clock" id="clock">--:--:--</div>
+        </header>
+
+        <div class="main-wrapper">
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="sidebar-menu">
+                    <div class="menu-item" onclick="window.location.href='/'">
+                        <i class="fa-solid fa-power-off"></i>
+                        <span>Đăng xuất</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='/Dashboard.html'">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Trang chủ</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='/detect'">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Nhận diện</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="menu-item" onclick="window.location.href='/report.html'">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Thống kê</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- CONTENT -->
+            <main class="content-area">
+                <div class="wrap">
+
+                    <!-- PAGE HEADER -->
+                    <div class="page-header">
+                        <div>
+                            <h1>
+                                <span class="icon-wrap"><i class="fa-solid fa-users"></i></span>
+                                Quản Lý Nhân Viên
+                            </h1>
+                        </div>
+                    </div>
+
+                    <!-- MAIN GRID -->
+                    <div class="main">
+
+                        <!-- LEFT: TABLE -->
+                        <div class="left">
+                            <div class="toolbar">
+                                <div class="search-wrap">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="searchInput" placeholder="Tìm theo tên hoặc tài khoản…"
+                                        oninput="filterTable()">
+                                </div>
+                                <button class="btn-clear" onclick="resetFilter()">
+                                    <i class="fa-solid fa-xmark"></i> Xóa lọc
+                                </button>
+                                <div class="count-chip">
+                                    <span id="empCount">0</span> nhân viên
+                                </div>
+                            </div>
+                            <div class="table-wrap">
+                                <table id="employeeTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:36px">#</th>
+                                            <th>Nhân viên</th>
+                                            <th>Chức vụ</th>
+                                            <th>Trạng thái</th>
+                                            <th>Ngày tạo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- RESIZE DIVIDER -->
+                        <div class="resize-divider" id="resizeDivider"></div>
+
+                        <!-- RIGHT: FORM PANEL -->
+                        <div class="right">
+                            <div class="panel-header">
+                                <h2>
+                                    <i class="fa-solid fa-user-gear"></i>
+                                    Cấu hình nhân viên
+                                </h2>
+                                <p id="panelSubtitle">Chọn nhân viên để chỉnh sửa hoặc tạo mới</p>
+                            </div>
+
+                            <div class="panel-body">
+                                <!-- Họ tên -->
+                                <div class="field">
+                                    <label>Họ và tên <span style="color:#ef4444">*</span></label>
+                                    <div class="inp-wrap">
+                                        <i class="fa-solid fa-id-card"></i>
+                                        <input type="text" id="f_name" placeholder="VD: Nguyễn Văn An">
+                                    </div>
+                                </div>
+
+                                <!-- Tài khoản -->
+                                <div class="field">
+                                    <label>Tài khoản <span style="color:#ef4444">*</span></label>
+                                    <div class="inp-wrap">
+                                        <i class="fa-solid fa-at"></i>
+                                        <input type="text" id="f_username" placeholder="VD: nhanvien01">
+                                    </div>
+                                </div>
+
+                                <div class="sep">Mật khẩu</div>
+
+                                <!-- Mật khẩu -->
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>Mật khẩu</label>
+                                        <div class="inp-wrap">
+                                            <i class="fa-solid fa-lock"></i>
+                                            <input type="password" id="f_password" placeholder="••••••••">
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label>Xác nhận</label>
+                                        <div class="inp-wrap">
+                                            <i class="fa-solid fa-lock"></i>
+                                            <input type="password" id="f_confirm" placeholder="••••••••">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="sep">Phân quyền</div>
+
+                                <!-- Chức vụ -->
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>Chức vụ</label>
+                                        <div class="inp-wrap">
+                                            <i class="fa-solid fa-user-tag"></i>
+                                            <select id="f_role">
+                                                <option value="admin">Quản trị viên</option>
+                                                <option value="staff" selected>Nhân viên</option>
+                                                <option value="guard">Bảo vệ</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label>Trạng thái</label>
+                                        <div class="inp-wrap">
+                                            <i class="fa-solid fa-toggle-on"></i>
+                                            <select id="f_status">
+                                                <option value="active">Hoạt động</option>
+                                                <option value="inactive">Ngừng</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Ghi chú -->
+                                <div class="field">
+                                    <label>Ghi chú</label>
+                                    <div class="inp-wrap">
+                                        <i class="fa-solid fa-note-sticky"></i>
+                                        <input type="text" id="f_note" placeholder="Ghi chú thêm…">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ACTION BUTTONS -->
+                            <div class="panel-footer">
+                                <button id="btnSave" class="btn-action btn-save" onclick="addOrUpdate()">
+                                    <i class="fa-solid fa-check"></i> Lưu
+                                </button>
+                                <button id="btnNew" class="btn-action btn-new" onclick="clearForm()">
+                                    <i class="fa-solid fa-plus"></i> Mới
+                                </button>
+                                <button id="btnDelete" class="btn-action btn-del" onclick="deleteRow()">
+                                    <i class="fa-solid fa-trash"></i> Xóa
+                                </button>
+                            </div>
+                        </div>
+
+                    </div><!-- /.main -->
+                </div><!-- /.wrap -->
+            </main>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast"></div>
+
+    <script src="../static/smart_parking.js"></script>
+    <script>
+        /* ── RESIZE DIVIDER ─────────────────────────────────────────────── */
+        const resizeDivider = document.getElementById('resizeDivider');
+        const main = document.querySelector('.main');
+        const right = document.querySelector('.right');
+        let isResizing = false;
+
+        resizeDivider.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizeDivider.classList.add('active');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const mainRect = main.getBoundingClientRect();
+            const newRightWidth = mainRect.right - e.clientX - 10;
+            
+            if (newRightWidth > 250 && newRightWidth < 500) {
+                right.style.width = newRightWidth + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            resizeDivider.classList.remove('active');
+        });
+
+        /* ── DATA ───────────────────────────────────────────────────────── */
+        let employees = [];
+        let selectedId = null;
+
+        const ROLE_META = {
+            admin: { label: 'Quản trị viên', cls: 'b-admin' },
+            staff: { label: 'Nhân viên', cls: 'b-staff' },
+            guard: { label: 'Bảo vệ', cls: 'b-guard' },
+        };
+
+        const AVATAR_COLORS = [
+            'linear-gradient(135deg,#6366f1,#4f46e5)',
+            'linear-gradient(135deg,#2563eb,#1d4ed8)',
+            'linear-gradient(135deg,#0891b2,#0e7490)',
+            'linear-gradient(135deg,#059669,#047857)',
+            'linear-gradient(135deg,#d97706,#b45309)',
+            'linear-gradient(135deg,#dc2626,#b91c1c)',
+            'linear-gradient(135deg,#7c3aed,#6d28d9)',
+            'linear-gradient(135deg,#db2777,#be185d)',
+        ];
+
+        function avatarGrad(name) {
+            let h = 0;
+            for (const c of (name || '?')) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+            return AVATAR_COLORS[h % AVATAR_COLORS.length];
+        }
+
+        function initials(name) {
+            const parts = (name || '?').trim().split(/\s+/);
+            if (parts.length === 1) return parts[0][0].toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+
+        /* ── FETCH ──────────────────────────────────────────────────────── */
+        async function fetchEmployees() {
+            try {
+                const res = await fetch('/api/employees');
+
+                // Session het han hoac chua dang nhap -> ve trang login
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                const result = await res.json();
+                if (result.success) {
+                    employees = result.data;
+                    updateStats();
+                    renderTable(employees);
+                } else {
+                    showToast('Lỗi tải dữ liệu: ' + result.message, false);
+                }
+            } catch {
+                showToast('Lỗi kết nối máy chủ', false);
+            }
+        }
+
+        async function fetchCurrentUser() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/';
+                    return;
+                }
+                const data = await res.json();
+                if (data.success) {
+                    const roleLabel = { admin: 'Quản trị viên', staff: 'Nhân viên', guard: 'Bảo vệ' };
+                    const subtitle = document.getElementById('pageSubtitle');
+                    if (subtitle) {
+                        subtitle.textContent =
+                            `Đang đăng nhập: ${data.user.name} · ${roleLabel[data.user.role] || data.user.role}`;
+                    }
+                }
+            } catch { /* bo qua neu loi ket noi */ }
+        }
+
+        /* ── STATS ──────────────────────────────────────────────────────── */
+        function updateStats() {
+            animateCount('statTotal', employees.length);
+            animateCount('statActive', employees.filter(e => e.status === 'active').length);
+            animateCount('statAdmin', employees.filter(e => e.role === 'admin').length);
+            animateCount('statInactive', employees.filter(e => e.status === 'inactive').length);
+        }
+
+        function animateCount(id, target) {
+            const el = document.getElementById(id);
+            const start = parseInt(el.textContent) || 0;
+            const dur = 500;
+            const t0 = performance.now();
+            const tick = (now) => {
+                const p = Math.min((now - t0) / dur, 1);
+                el.textContent = Math.round(start + (target - start) * p);
+                if (p < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }
+
+        /* ── RENDER TABLE ───────────────────────────────────────────────── */
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            document.getElementById('empCount').textContent = data.length;
+
+            if (!data.length) {
+                tbody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="5">
+                        <i class="fa-solid fa-users-slash"></i>
+                        <p>Không có nhân viên nào</p>
+                    </td>
+                </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map((emp, idx) => {
+                const rm = ROLE_META[emp.role] || { label: emp.role, cls: 'b-staff' };
+                const isOn = emp.status === 'active';
+                const sel = emp.id === selectedId ? ' selected' : '';
+                const grad = avatarGrad(emp.name);
+                const ini = initials(emp.name);
+                const createdAt = emp.created_at || '—';
+
+                return `
+            <tr class="${sel}" onclick="selectRow(${emp.id})">
+                <td style="font-size:11px;color:#94a3b8;font-weight:600;">${idx + 1}</td>
+                <td>
+                    <div class="emp-cell">
+                        <div class="avatar" style="background:${grad}">${ini}</div>
+                        <div>
+                            <div class="emp-name">${emp.name}</div>
+                            <div class="emp-uname">@${emp.username}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="badge ${rm.cls}">${rm.label}</span></td>
+                <td>
+                    <span class="status-pill">
+                        <span class="dot ${isOn ? 'dot-on' : 'dot-off'}"></span>
+                        <span class="${isOn ? 'text-on' : 'text-off'}">${isOn ? 'Hoạt động' : 'Ngừng'}</span>
+                    </span>
+                </td>
+                <td style="font-size:11px;color:#64748b;white-space:nowrap;">${createdAt}</td>
+            </tr>`;
+            }).join('');
+        }
+
+        /* ── FILTER ─────────────────────────────────────────────────────── */
+        function filterTable() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = q
+                ? employees.filter(e =>
+                    e.name.toLowerCase().includes(q) || e.username.toLowerCase().includes(q))
+                : employees;
+            renderTable(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('searchInput').value = '';
+            renderTable(employees);
+        }
+
+        /* ── SELECT ROW ─────────────────────────────────────────────────── */
+        function selectRow(id) {
+            selectedId = id;
+            const emp = employees.find(e => e.id === id);
+            if (!emp) return;
+
+            document.getElementById('f_name').value = emp.name;
+            document.getElementById('f_username').value = emp.username;
+            document.getElementById('f_role').value = emp.role;
+            document.getElementById('f_status').value = emp.status;
+            document.getElementById('f_note').value = emp.note || '';
+            document.getElementById('f_password').value = '';
+            document.getElementById('f_confirm').value = '';
+            document.getElementById('panelSubtitle').textContent = `Đang chỉnh sửa: ${emp.name}`;
+
+            renderTable(employees);
+        }
+
+        /* ── CLEAR FORM ─────────────────────────────────────────────────── */
+        function clearForm() {
+            selectedId = null;
+            ['f_name', 'f_username', 'f_password', 'f_confirm', 'f_note'].forEach(
+                id => document.getElementById(id).value = ''
+            );
+            document.getElementById('f_role').value = 'staff';
+            document.getElementById('f_status').value = 'active';
+            document.getElementById('panelSubtitle').textContent = 'Điền thông tin để tạo nhân viên mới';
+            renderTable(employees);
+        }
+
+        /* ── LOADING STATE ──────────────────────────────────────────────── */
+        function setLoading(on) {
+            const btnSave = document.getElementById('btnSave');
+            const btnDel = document.getElementById('btnDelete');
+            const btnNew = document.getElementById('btnNew');
+            [btnSave, btnDel, btnNew].forEach(b => b.disabled = on);
+            if (on) {
+                btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý…';
+            } else {
+                btnSave.innerHTML = '<i class="fa-solid fa-check"></i> Lưu';
+            }
+        }
+
+        /* ── ADD / UPDATE ───────────────────────────────────────────────── */
+        async function addOrUpdate() {
+            const name = document.getElementById('f_name').value.trim();
+            const username = document.getElementById('f_username').value.trim();
+            const pw = document.getElementById('f_password').value;
+            const confirm = document.getElementById('f_confirm').value;
+            const role = document.getElementById('f_role').value;
+            const status = document.getElementById('f_status').value;
+            const note = document.getElementById('f_note').value.trim();
+
+            if (!name || !username) {
+                showToast('Vui lòng nhập họ tên và tài khoản!', false);
+                return;
+            }
+            if (pw && pw !== confirm) {
+                showToast('Mật khẩu xác nhận không khớp!', false);
+                return;
+            }
+            if (!selectedId && !pw) {
+                showToast('Vui lòng nhập mật khẩu cho nhân viên mới!', false);
+                return;
+            }
+
+            const url = selectedId ? `/api/employees/${selectedId}` : '/api/employees';
+            const method = selectedId ? 'PUT' : 'POST';
+
+            setLoading(true);
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, username, password: pw, role, status, note })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(result.message, true);
+                    if (!selectedId) clearForm();
+                    await fetchEmployees();
+                    if (selectedId) renderTable(employees);
+                } else {
+                    showToast(result.message, false);
+                }
+            } catch {
+                showToast('Lỗi kết nối máy chủ', false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        /* ── DELETE ─────────────────────────────────────────────────────── */
+        async function deleteRow() {
+            if (!selectedId) {
+                showToast('Vui lòng chọn nhân viên cần xóa!', false);
+                return;
+            }
+            const emp = employees.find(e => e.id === selectedId);
+            if (!confirm(`Xóa nhân viên "${emp?.name}"?`)) return;
+
+            setLoading(true);
+            try {
+                const res = await fetch(`/api/employees/${selectedId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(result.message, true);
+                    selectedId = null;
+                    clearForm();
+                    await fetchEmployees();
+                } else {
+                    showToast(result.message, false);
+                }
+            } catch {
+                showToast('Lỗi kết nối máy chủ', false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        /* ── TOAST ──────────────────────────────────────────────────────── */
+        let toastTimer = null;
+        function showToast(msg, ok) {
+            const el = document.getElementById('toast');
+            el.className = 'show ' + (ok ? 't-ok' : 't-err');
+            el.innerHTML = `<i class="fa-solid ${ok ? 'fa-circle-check' : 'fa-circle-xmark'}"></i>${msg}`;
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+        }
+
+        /* ── INIT ───────────────────────────────────────────────────────── */
+        fetchEmployees();
+        fetchCurrentUser();
+    </script>
+</body>
+
+</html>
