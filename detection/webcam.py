@@ -51,8 +51,7 @@ def generate_frames():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     last_detect_time = 0.0
-    cached_boxes     = []
-    cached_texts     = []
+    shared_data = {'boxes': [], 'texts': [], 'detecting': False}
 
     try:
         while True:
@@ -64,32 +63,40 @@ def generate_frames():
             display = frame.copy()
             now     = time.time()
 
-            # ── Chạy YOLO + OCR theo chu kỳ ────────────────────────────────
-            if now - last_detect_time >= DETECT_INTERVAL:
+            # ── Chạy YOLO + OCR theo chu kỳ trong Thread ngầm để chống lag ────────────────────────────────
+            if now - last_detect_time >= DETECT_INTERVAL and not shared_data['detecting']:
                 last_detect_time = now
-                try:
-                    plate_crops, _, boxes_list = detect_license_plate(frame)
-                    cached_boxes = boxes_list
-                    cached_texts = []
-                    valid_plates = []
+                shared_data['detecting'] = True
+                
+                def bg_detect(detect_frame):
+                    try:
+                        plate_crops, _, boxes_list = detect_license_plate(detect_frame)
+                        new_texts = []
+                        valid_plates = []
 
-                    for crop in plate_crops:
-                        text = read_plate_text(crop)
-                        cached_texts.append(text)
-                        if text and text != 'UNKNOWN':
-                            valid_plates.append(text)
-                            logging.info(f"[Webcam] Biển số: {text}")
+                        for crop in plate_crops:
+                            text = read_plate_text(crop)
+                            new_texts.append(text)
+                            if text and text != 'UNKNOWN':
+                                valid_plates.append(text)
+                                logging.info(f"[Webcam] Biển số: {text}")
 
-                    # Cập nhật kết quả để frontend polling
-                    _update_result(valid_plates)
+                        # Cập nhật kết quả
+                        shared_data['boxes'] = boxes_list
+                        shared_data['texts'] = new_texts
+                        _update_result(valid_plates)
+                    except Exception as e:
+                        logging.error(f"[Webcam] Lỗi detect: {e}")
+                    finally:
+                        shared_data['detecting'] = False
 
-                except Exception as e:
-                    logging.error(f"[Webcam] Lỗi detect: {e}")
+                import threading
+                threading.Thread(target=bg_detect, args=(frame.copy(),), daemon=True).start()
 
             # ── Vẽ kết quả cached lên frame ─────────────────────────────────
-            for i, box in enumerate(cached_boxes):
+            for i, box in enumerate(shared_data['boxes']):
                 x1, y1, x2, y2 = box[:4]
-                text     = cached_texts[i] if i < len(cached_texts) else ''
+                text     = shared_data['texts'][i] if i < len(shared_data['texts']) else ''
                 is_valid = text and text != 'UNKNOWN'
 
                 color = (0, 220, 0) if is_valid else (59, 130, 246)

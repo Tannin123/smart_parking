@@ -13,11 +13,19 @@ def format_vn_plate(raw_text: str) -> str:
         return text
 
     tinh_str = text[:2].replace('B', '8').replace('O', '0').replace('D', '0').replace('S', '5').replace('Z', '2')
-    serie_char = text[2].replace('8', 'B').replace('0', 'D').replace('5', 'S').replace('2', 'Z')
+    serie_char = text[2].replace('8', 'B').replace('0', 'D').replace('5', 'S').replace('2', 'Z').replace('4', 'A')
     fixed_text = tinh_str + serie_char + text[3:]
 
-    if len(fixed_text) >= 8:
-        return f"{fixed_text[:4]}-{fixed_text[4:]}"
+    if len(fixed_text) == 8:
+        # Biển ô tô 5 số (VD: 30F - 55775) hoặc biển 4 số 
+        return f"{fixed_text[:3]} - {fixed_text[3:]}"
+    elif len(fixed_text) > 8:
+        # Biển xe máy 5 số (VD: 29D1 - 12345)
+        return f"{fixed_text[:4]} - {fixed_text[4:]}"
+    elif len(fixed_text) == 7:
+        # Biển ô tô 4 số (VD: 30A - 1234)
+        return f"{fixed_text[:3]} - {fixed_text[3:]}"
+    
     return fixed_text
 
 def read_plate_text(img) -> str:
