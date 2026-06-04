@@ -2,19 +2,36 @@
 <html lang="vi">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Bãi Xe</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cấu hình giá bãi giữ xe</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../static/smart_parking.css">
+    <style>
+        .price-wrap, .time-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%; }
+        .price-wrap input, .time-wrap input { min-width: 0; height: 36px; }
+        .price-wrap input, .time-wrap input { flex: 0 0 3cm; width: 3cm; max-width: 3cm; }
+        .time-wrap input { padding: 0 8px; }
+        .price-unit { font-size: 13px; color: #6b7280; }
+        .time-sep { font-size: 14px; color: #6b7280; font-weight: 600; }
+        .section-card .form-body { display: block; padding: 18px; }
+        .pricing-form .form-body { display: grid; grid-template-columns: 1fr; gap: 18px; padding: 18px; }
+        .price-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .price-table th, .price-table td { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+        .price-table th { color: #6b7280; font-weight: 700; background: #f8fafc; font-size: 13px; }
+        .price-table tr:hover td { background: #f8fafc; }
+        .price-table tr.selected td { background: #e0f2fe; }
+        .price-id { color: #2563eb; font-weight: 700; }
+        .price-val { font-weight: 700; color: #0f172a; }
+        .footer-note { padding: 14px 20px; font-size: 13px; color: #475569; background: #f8fafc; }
+        @media (max-width: 980px) { .content-area { padding-top: 40px; } .pricing-form .form-fields { grid-template-columns: 1fr; text-align: left; } .pricing-form .form-label { text-align: left; } }
+    </style>
 </head>
 
-<body>
+<body class="employee-page">
     <div class="app-container">
         <header class="top-header">
             <nav class="top-nav">
@@ -41,7 +58,7 @@
                             </li>
                             <li onclick="window.location.href='pricing.html'" style="cursor:pointer;">
                                 <i class="fa-solid fa-file-pen"></i>
-                                <span>Cấu hình quản lý</span>
+                                <span>Cấu hình giá</span>
                             </li>
                         </ul>
                     </li>
@@ -58,7 +75,7 @@
                             </li>
                         </ul>
                     </li>
-                    <li><a href="help.html">Trợ Giúp</a></li>
+                    <li><a href="support.html">Trợ Giúp</a></li>
                 </ul>
             </nav>
             <div class="clock" id="clock">--:--:--</div>
@@ -88,96 +105,182 @@
                     </div>
                 </div>
             </aside>
+
             <main class="content-area">
                 <div class="wrap">
-                    <div class="main">
-                        <div class="left">
-                            <div class="toolbar">
-                                <label>Tìm kiếm:</label>
-                                <input type="text" id="searchInput" placeholder="Nhập loại xe..." style="width:140px"
-                                    oninput="filterTable()" />
-                                <button class="btn-blue" onclick="resetFilter()">Xóa lọc</button>
-                                <span style="margin-left:auto; font-size:12px; color:#000; font-weight:500;">
-                                    Tổng: <span id="totalCount">4</span> loại xe
-                                </span>
+                    <div class="page-title-card">
+                        <div>
+                            <h1>Cấu hình giá bãi giữ xe</h1>
+                        </div>
+                    </div>
+
+                    <div class="pricing-grid">
+                        <div class="section-card pricing-form">
+                            <div class="section-header">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                                Thông tin giá
                             </div>
-                            <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
-                                <table id="vehicleTable">
-                                    <thead>
-                                        <tr>
-                                            <th style="width:32px">STT</th>
-                                            <th>Loại xe</th>
-                                            <th>Giá/lượt</th>
-                                            <th>Giờ vào</th>
-                                            <th>Giờ ra</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tableBody"></tbody>
-                                </table>
+                            <div class="form-body">
+                                <div class="form-fields">
+                                    <span class="form-label">Mã giá:</span>
+                                    <input class="form-input" id="priceId" placeholder="VD: G001" />
+
+                                    <span class="form-label">Loại xe:</span>
+                                    <div class="vehicle-wrap">
+                                        <label class="vehicle-opt">
+                                            <input type="radio" name="vehicleType" value="Xe đạp" checked />
+                                            Xe đạp
+                                        </label>
+                                        <label class="vehicle-opt">
+                                            <input type="radio" name="vehicleType" value="Xe máy" />
+                                            Xe máy
+                                        </label>
+                                        <label class="vehicle-opt">
+                                            <input type="radio" name="vehicleType" value="Xe ô tô" />
+                                            Xe ô tô
+                                        </label>
+                                    </div>
+
+                                    <span class="form-label">Giá (VNĐ):</span>
+                                    <div class="price-wrap">
+                                        <input class="form-input" id="priceValue" type="number" min="0" placeholder="VD: 6000" />
+                                        <span class="price-unit">đồng / lượt</span>
+                                    </div>
+
+                                    <span class="form-label">Thời gian áp dụng:</span>
+                                    <div class="time-wrap">
+                                        <input class="form-input" id="timeFrom" type="time" value="00:00" />
+                                        <span class="time-sep">→</span>
+                                        <input class="form-input" id="timeTo" type="time" value="23:59" />
+                                    </div>
+
+                                    <span class="form-label">Ghi chú:</span>
+                                    <input class="form-input" id="priceNote" placeholder="Ghi chú thêm nếu có" />
+                                </div>
+
+                                <div class="actions">
+                                    <button class="btn btn-add" onclick="addPrice()">Thêm</button>
+                                    <button class="btn btn-save" onclick="savePrice()">Lưu</button>
+                                    <button class="btn btn-edit" onclick="editPrice()">Sửa</button>
+                                    <button class="btn btn-delete" onclick="deletePrice()">Xóa</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="right">
-                            <div class="panel-title"><i class="ti ti-settings"
-                                    style="font-size:14px; vertical-align:-2px; margin-right:4px"
-                                    aria-hidden="true"></i>Cấu hình hệ thống</div>
 
-                            <div class="form-row">
-                                <label>Loại xe</label>
-                                <select id="f_type">
-                                    <option>Xe Máy</option>
-                                    <option>Xe Tay Ga</option>
-                                    <option>Ô tô</option>
-                                    <option>Xe Đạp</option>
-                                </select>
+                        <div class="section-card">
+                            <div class="section-header">
+                                <i class="fa-solid fa-list-check"></i>
+                                Danh sách giá bãi giữ xe
                             </div>
-
-                            <div class="section-label">Giá tiền</div>
-                            <div class="time-grid">
-                                <div class="form-row">
-                                    <label>Giá/lượt</label>
-                                    <input type="number" id="f_price_turn" placeholder="VD: 5000" min="0" step="1000" />
-                                </div>
+                            <div class="form-body">
+                                <table class="price-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã giá</th>
+                                            <th>Loại xe</th>
+                                            <th>Giá (VNĐ)</th>
+                                            <th>Thời gian áp dụng</th>
+                                            <th>Ghi chú</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="priceTableBody"></tbody>
+                                </table>
                             </div>
-                            <div class="section-label">Thời gian gửi xe</div>
-                            <div class="time-grid">
-                                <div class="form-row">
-                                    <label>Giờ vào</label>
-                                    <input type="time" id="f_time_in" value="06:00" />
-                                </div>
-                                <div class="form-row">
-                                    <label>Giờ ra</label>
-                                    <input type="time" id="f_time_out" value="22:00" />
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <label>Ghi chú</label>
-                                <input type="text" id="f_note" placeholder="Ghi chú" />
-                            </div>
-
-                            <div class="action-row">
-                                <button style="background: #215A88; color:#fff;" onclick="addOrUpdate()">
-                                    <i class="ti ti-check" style="font-size:13px; vertical-align:-1px"
-                                        aria-hidden="true"></i> Lưu
-                                </button>
-                                <button style="background:#215A88; color:#fff;" onclick="clearForm()">
-                                    <i class="ti ti-plus" style="font-size:13px; vertical-align:-1px"
-                                        aria-hidden="true"></i> Mới
-                                </button>
-                                <button style="background:#215A88; color:#fff;" onclick="deleteRow()">
-                                    <i class="ti ti-trash" style="font-size:13px; vertical-align:-1px"
-                                        aria-hidden="true"></i> Xóa
-                                </button>
-                            </div>
-
-                            <div id="statusMsg"
-                                style="font-size:12px; color:#27ae60; text-align:center; min-height:16px;"></div>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
+
+    <script>
+        let prices = [
+            { id: 'G001', vehicleType: 'Xe đạp', price: 6000, timeFrom: '00:00', timeTo: '23:59', note: '' },
+            { id: 'G002', vehicleType: 'Xe máy', price: 6000, timeFrom: '00:00', timeTo: '23:59', note: '' },
+            { id: 'G003', vehicleType: 'Xe ô tô', price: 6000, timeFrom: '00:00', timeTo: '23:59', note: '' },
+        ];
+        let selectedId = null;
+
+        function fmtPrice(n) {
+            return Number(n).toLocaleString('vi-VN') + ' đ';
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('priceTableBody');
+            tbody.innerHTML = prices.map(p => `
+                <tr class="${selectedId === p.id ? 'selected' : ''}" onclick="selectRow('${p.id}')">
+                    <td class="price-id">${p.id}</td>
+                    <td>${p.vehicleType}</td>
+                    <td class="price-val">${fmtPrice(p.price)}</td>
+                    <td>${p.timeFrom} → ${p.timeTo}</td>
+                    <td>${p.note}</td>
+                </tr>
+            `).join('');
+        }
+
+        function selectRow(id) {
+            selectedId = id;
+            const p = prices.find(e => e.id === id);
+            if (!p) return;
+            document.getElementById('priceId').value = p.id;
+            document.getElementById('priceValue').value = p.price;
+            document.getElementById('timeFrom').value = p.timeFrom;
+            document.getElementById('timeTo').value = p.timeTo;
+            document.getElementById('priceNote').value = p.note;
+            document.querySelectorAll('input[name=vehicleType]').forEach(r => r.checked = r.value === p.vehicleType);
+            renderTable();
+        }
+
+        function clearForm() {
+            ['priceId', 'priceValue', 'priceNote'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('timeFrom').value = '00:00';
+            document.getElementById('timeTo').value = '23:59';
+            document.querySelectorAll('input[name=vehicleType]')[0].checked = true;
+            selectedId = null;
+            renderTable();
+        }
+
+        function getFormData() {
+            return {
+                id: document.getElementById('priceId').value.trim(),
+                vehicleType: document.querySelector('input[name=vehicleType]:checked').value,
+                price: Number(document.getElementById('priceValue').value),
+                timeFrom: document.getElementById('timeFrom').value,
+                timeTo: document.getElementById('timeTo').value,
+                note: document.getElementById('priceNote').value.trim(),
+            };
+        }
+
+        function addPrice() {
+            const d = getFormData();
+            if (!d.id || !d.price) { alert('Vui lòng nhập Mã giá và Giá!'); return; }
+            if (prices.find(e => e.id === d.id)) { alert('Mã giá đã tồn tại!'); return; }
+            prices.push(d);
+            clearForm();
+        }
+
+        function savePrice() {
+            if (!selectedId) { alert('Vui lòng chọn dòng cần lưu!'); return; }
+            const d = getFormData();
+            const idx = prices.findIndex(e => e.id === selectedId);
+            if (idx >= 0) prices[idx] = { ...d, id: selectedId };
+            renderTable();
+        }
+
+        function editPrice() {
+            if (!selectedId) { alert('Vui lòng chọn dòng cần sửa!'); return; }
+            document.getElementById('priceValue').focus();
+        }
+
+        function deletePrice() {
+            if (!selectedId) { alert('Vui lòng chọn dòng cần xóa!'); return; }
+            if (!confirm('Xóa mã giá ' + selectedId + '?')) return;
+            prices = prices.filter(e => e.id !== selectedId);
+            clearForm();
+        }
+
+        renderTable();
+    </script>
     <script src="../static/smart_parking.js"></script>
 </body>
 
