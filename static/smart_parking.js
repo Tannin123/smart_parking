@@ -68,17 +68,25 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('loginForm');
     if (!form) return;
 
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
         const user = (document.getElementById('_010_txtTaiKhoan') || {}).value || '';
         const pass = (document.getElementById('_010_txtMatKhau') || {}).value || '';
-        const VALID_USERNAME = 'admin';
-        const VALID_PASSWORD = 'admin123';
-
-        if (user.trim() === VALID_USERNAME && pass === VALID_PASSWORD) {
-            window.location.href = 'Dashboard.html';
-        } else {
-            alert('Tài khoản hoặc mật khẩu không đúng');
+        
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: user, password: pass})
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = 'Dashboard.html';
+            } else {
+                alert(data.message || 'Tài khoản hoặc mật khẩu không đúng');
+            }
+        } catch(err) {
+            alert('Lỗi kết nối máy chủ!');
         }
     });
 });
@@ -86,15 +94,22 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
     if (!document.getElementById('totalCount')) return;
 
-    let data = [
-        { type: 'Xe Máy', price_turn: 5000, time_in: '06:00', time_out: '22:00', note: 'Thường ngày' },
-        { type: 'Xe Tay Ga', price_turn: 5000, time_in: '06:00', time_out: '22:00', note: 'Thường ngày' },
-        { type: 'Ô tô', price_turn: 15000, time_in: '06:00', time_out: '22:00', note: '' },
-    ];
+    let data = [];
     let selectedIdx = null;
     let filterText = '';
 
     function fmtPrice(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+
+    async function fetchPricing() {
+        try {
+            const res = await fetch('/api/pricing');
+            const result = await res.json();
+            if (result.success) {
+                data = result.data || [];
+                renderTable();
+            }
+        } catch(e) { console.error('Lỗi tải giá vé:', e); }
+    }
 
     function renderTable() {
         const tbody = document.getElementById('tableBody');
@@ -134,24 +149,39 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('f_time_out').value = d.time_out;
         renderTable();
     };
-    window.addOrUpdate = function () {
+    window.addOrUpdate = async function () {
         const obj = {
             type: document.getElementById('f_type').value,
             price_turn: parseInt(document.getElementById('f_price_turn').value) || 0,
             time_in: document.getElementById('f_time_in').value,
             time_out: document.getElementById('f_time_out').value,
-            note: document.getElementById('f_note').value,
+            note: document.getElementById('f_note') ? document.getElementById('f_note').value : '',
         };
-        if (selectedIdx !== null) { data[selectedIdx] = obj; showStatus('Đã cập nhật thành công!'); }
-        else { data.push(obj); selectedIdx = data.length - 1; showStatus('Đã thêm loại xe mới!'); }
-        renderTable();
+        try {
+            if (selectedIdx !== null) { 
+                const id = data[selectedIdx].id;
+                const res = await fetch('/api/pricing/' + id, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(obj)});
+                const result = await res.json();
+                if (result.success) { showStatus('Đã cập nhật thành công!'); fetchPricing(); clearForm(); }
+            } else { 
+                const res = await fetch('/api/pricing', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(obj)});
+                const result = await res.json();
+                if (result.success) { showStatus('Đã thêm loại xe mới!'); fetchPricing(); clearForm(); }
+            }
+        } catch(e) { showStatus('Lỗi máy chủ', '#e74c3c'); }
     };
-    window.deleteRow = function () {
+    window.deleteRow = async function () {
         if (selectedIdx === null) { showStatus('Chọn một hàng để xóa.', '#e74c3c'); return; }
-        data.splice(selectedIdx, 1);
-        selectedIdx = null;
-        window.clearForm();
-        showStatus('Đã xóa!', '#e74c3c');
+        const id = data[selectedIdx].id;
+        try {
+            const res = await fetch('/api/pricing/' + id, {method: 'DELETE'});
+            const result = await res.json();
+            if(result.success) {
+                window.clearForm();
+                fetchPricing();
+                showStatus('Đã xóa!', '#e74c3c');
+            }
+        } catch(e) { showStatus('Lỗi máy chủ', '#e74c3c'); }
     };
     window.clearForm = function () {
         selectedIdx = null;
@@ -159,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('f_price_turn').value = '';
         document.getElementById('f_time_in').value = '06:00';
         document.getElementById('f_time_out').value = '22:00';
-        document.getElementById('f_note').value = '';
+        if(document.getElementById('f_note')) document.getElementById('f_note').value = '';
         renderTable();
     };
     window.filterTable = function () {
@@ -172,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderTable();
     };
 
-    renderTable();
+    fetchPricing();
 });
 
 // REPORT JS
@@ -907,20 +937,36 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* EMPLOYEE PAGE LOGIC */
+// EMPLOYEE PAGE LOGIC
 document.addEventListener('DOMContentLoaded', function () {
     if (!document.getElementById('empTableBody')) return;
 
-    const employees = [
-        { id: 'E0001', firstName: 'Hoắc Võ', lastName: 'Hồng Cúc', dob: '23/10/2006', gender: 'Female', address: 'Thủ Thừa - Long An - Việt Nam' },
-        
-    ];
-    let currentEmployees = [...employees];
+    let currentEmployees = [];
     let selectedId = null;
+
+    async function fetchEmployees() {
+        try {
+            const res = await fetch('/api/users');
+            const result = await res.json();
+            if (result.success) {
+                currentEmployees = result.data.map(u => ({
+                    dbId: u.id,
+                    id: u.username,
+                    firstName: u.first_name || '',
+                    lastName: u.last_name || '',
+                    dob: u.dob || '',
+                    gender: u.gender || 'Male',
+                    address: u.address || ''
+                }));
+                renderTable();
+            }
+        } catch(e) { console.error('Lỗi tải nhân viên:', e); }
+    }
 
     window.renderTable = function () {
         const tbody = document.getElementById('empTableBody');
         tbody.innerHTML = currentEmployees.map(e => `
-            <tr class="${selectedId === e.id ? 'selected' : ''}" onclick="selectRow('${e.id}')">
+            <tr class="${selectedId === e.dbId ? 'selected' : ''}" onclick="selectRow(${e.dbId})">
                 <td class="emp-id">${e.id}</td>
                 <td>${e.firstName}</td>
                 <td>${e.lastName}</td>
@@ -936,7 +982,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.getFormData = function () {
         return {
-            id: document.getElementById('empId').value.trim(),
+            empId: document.getElementById('empId').value.trim(),
             firstName: document.getElementById('firstName').value.trim(),
             lastName: document.getElementById('lastName').value.trim(),
             dob: document.getElementById('dob').value.trim(),
@@ -945,9 +991,9 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     };
 
-    window.selectRow = function (id) {
-        selectedId = id;
-        const emp = currentEmployees.find(e => e.id === id);
+    window.selectRow = function (dbId) {
+        selectedId = dbId;
+        const emp = currentEmployees.find(e => e.dbId === dbId);
         if (!emp) return;
         document.getElementById('empId').value = emp.id;
         document.getElementById('firstName').value = emp.firstName;
@@ -966,20 +1012,27 @@ document.addEventListener('DOMContentLoaded', function () {
         renderTable();
     };
 
-    window.addEmployee = function () {
+    window.addEmployee = async function () {
         const d = getFormData();
-        if (!d.id || !d.firstName) { alert('Vui lòng nhập ID và First Name!'); return; }
-        if (currentEmployees.find(e => e.id === d.id)) { alert('ID đã tồn tại!'); return; }
-        currentEmployees.push(d);
-        clearForm();
+        if (!d.empId || !d.firstName) { alert('Vui lòng nhập ID và First Name!'); return; }
+        if (currentEmployees.find(e => e.id === d.empId)) { alert('ID đã tồn tại!'); return; }
+        try {
+            const res = await fetch('/api/users', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d)});
+            const result = await res.json();
+            if(result.success) { fetchEmployees(); clearForm(); alert('Thêm thành công'); }
+            else { alert('Lỗi khi thêm'); }
+        } catch(e) { alert('Lỗi kết nối'); }
     };
 
-    window.saveEmployee = function () {
+    window.saveEmployee = async function () {
         if (!selectedId) { alert('Vui lòng chọn nhân viên cần lưu!'); return; }
         const d = getFormData();
-        const idx = currentEmployees.findIndex(e => e.id === selectedId);
-        if (idx >= 0) currentEmployees[idx] = { ...d, id: selectedId };
-        renderTable();
+        try {
+            const res = await fetch('/api/users/' + selectedId, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d)});
+            const result = await res.json();
+            if(result.success) { fetchEmployees(); clearForm(); alert('Đã lưu thành công'); }
+            else { alert('Lỗi khi lưu'); }
+        } catch(e) { alert('Lỗi kết nối'); }
     };
 
     window.editEmployee = function () {
@@ -987,11 +1040,15 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('firstName').focus();
     };
 
-    window.deleteEmployee = function () {
+    window.deleteEmployee = async function () {
         if (!selectedId) { alert('Vui lòng chọn nhân viên cần xóa!'); return; }
-        if (!confirm('Xóa nhân viên ' + selectedId + '?')) return;
-        currentEmployees = currentEmployees.filter(e => e.id !== selectedId);
-        clearForm();
+        if (!confirm('Xóa nhân viên này?')) return;
+        try {
+            const res = await fetch('/api/users/' + selectedId, {method: 'DELETE'});
+            const result = await res.json();
+            if(result.success) { fetchEmployees(); clearForm(); alert('Đã xóa thành công'); }
+            else { alert('Lỗi khi xóa'); }
+        } catch(e) { alert('Lỗi kết nối'); }
     };
 
     window.changeAvatar = function (event) {
@@ -1005,6 +1062,6 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsDataURL(file);
     };
 
-    renderTable();
+    fetchEmployees();
 });
 

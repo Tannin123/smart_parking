@@ -18,8 +18,7 @@ ALLOWED_VIDEO_EXT = {'mp4', 'avi', 'mov', 'mkv'}
 # ── YOLO model ──────────────────────────────────────────────────────────
 MODEL_PATH = os.path.join(BASE_DIR, 'models', 'yolov8n.pt')
 
-# ── MySQL ───────────────────────────────────────────────────────────────
 DB_HOST = 'localhost'
 DB_USER = 'root'
-DB_PASS = ''
+DB_PASS = '123456'
 DB_NAME = 'smart_parking'
