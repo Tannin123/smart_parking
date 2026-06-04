@@ -53,10 +53,10 @@ def dashboard():
     return render_template('Dashboard.html')
 
 @app.route('/detect')
-@app.route('/nhandien.html')
+@app.route('/detect.html')
 @login_required
 def detect_page():
-    return render_template('nhandien.html')
+    return render_template('detect.html')
 
 @app.route('/employee')
 @app.route('/employee.html')
@@ -69,6 +69,12 @@ def employee():
 @login_required
 def pricing():
     return render_template('pricing.html')
+
+@app.route('/changepassword.html')
+@app.route('/changepassword')
+@login_required
+def changepassword():
+    return render_template('changepassword.html')
 
 @app.route('/report.html')
 @app.route('/report')
@@ -101,6 +107,22 @@ def api_login():
 def api_logout():
     session.clear()
     return jsonify({'success': True})
+
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def api_change_password():
+    data = request.json
+    old_pwd = data.get('old_password')
+    new_pwd = data.get('new_password')
+    success, msg = db.change_password(session['user_id'], old_pwd, new_pwd)
+    return jsonify({'success': success, 'message': msg})
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 
 # ── API Routes (Users) ───────────────────────────────────────────────────
@@ -153,6 +175,21 @@ def api_update_pricing(pricing_id):
 def api_delete_pricing(pricing_id):
     success = db.delete_pricing(pricing_id)
     return jsonify({'success': success})
+
+
+# ── API Routes (Report) ──────────────────────────────────────────────────
+@app.route('/api/report', methods=['GET'])
+@login_required
+def api_get_report():
+    from_date = request.args.get('from', '2020-01-01 00:00:00')
+    to_date = request.args.get('to', '2099-12-31 23:59:59')
+    
+    # Optional: adjust 'T' to space for datetime compatibility if coming from datetime-local input
+    from_date = from_date.replace('T', ' ')
+    to_date = to_date.replace('T', ' ')
+    
+    data = db.get_report_data(from_date, to_date)
+    return jsonify({'success': True, 'data': data})
 
 
 # ── Run ──────────────────────────────────────────────────────────────────

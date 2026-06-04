@@ -209,19 +209,44 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
     if (!document.getElementById('donutChart')) return;
 
-    const tableData = [
-        { name: 'Xe Đạp',       doanhthu: 0,      vao: 0,   ra: 0,   highlight: true },
-        { name: 'Xe Điện',      doanhthu: 0,      vao: 0,   ra: 0   },
-        { name: 'Xe Tay Ga',    doanhthu: 0,      vao: 180, ra: 242 },
-        { name: 'Ô tô',         doanhthu: 0,      vao: 3,   ra: 2   },
-        { name: 'Xe Máy',       doanhthu: 145000, vao: 88,  ra: 100 },
-        { name: 'Ô tô 5 chỗ',  doanhthu: 0,      vao: 11,  ra: 18  },
-        { name: 'Ô tô 7 chỗ',  doanhthu: 0,      vao: 0,   ra: 1   },
-        { name: 'Ô tô bán tải', doanhthu: 0,      vao: 0,   ra: 1   },
-    ];
+    // Thiết lập ngày mặc định là hôm nay
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    
+    document.getElementById('fromDate').value = `${todayStr}T00:00`;
+    document.getElementById('toDate').value = `${todayStr}T23:59`;
+
+    let tableData = [];
+    let barChartLabels = [];
+    let barChartData = [];
 
     function fmtNum(n) { return n === 0 ? '<span style="color:#aab">0</span>' : Number(n).toLocaleString('vi-VN'); }
     function fmtMoney(n) { return n === 0 ? '<span style="color:#aab">0</span>' : `<span style="color:#e74c3c;font-weight:600">${Number(n).toLocaleString('vi-VN')}</span>`; }
+
+    window.fetchReportData = async function() {
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        try {
+            const res = await fetch(`/api/report?from=${fromDate}&to=${toDate}`);
+            const result = await res.json();
+            if (result.success) {
+                tableData = result.data.tableData || [];
+                barChartLabels = result.data.barChartLabels || [];
+                barChartData = result.data.barChartData || [];
+                renderReportTable();
+                renderDonut();
+                renderBar();
+            }
+        } catch(e) {
+            console.error('Lỗi lấy dữ liệu thống kê:', e);
+        }
+    }
+
+    // Gán hàm cho nút bấm "Báo Cáo Tổng Quát"
+    window.renderTable = window.fetchReportData;
 
     function renderReportTable() {
         const tbody = document.getElementById('tableBody');
@@ -244,42 +269,57 @@ document.addEventListener('DOMContentLoaded', function () {
         </tr>`;
     }
 
+    let donutChartInstance = null;
     function renderDonut() {
         const colors = ['#2980b9','#1abc9c','#e91e8c','#f39c12','#8e44ad','#e74c3c','#16a085','#d35400'];
         const withRevenue = tableData.filter(d => d.doanhthu > 0);
-        const labels = withRevenue.length ? withRevenue.map(d => d.name) : ['Xe Máy'];
-        const vals   = withRevenue.length ? withRevenue.map(d => d.doanhthu) : [145000];
-        new Chart(document.getElementById('donutChart').getContext('2d'), {
+        const labels = withRevenue.length ? withRevenue.map(d => d.name) : ['Chưa có doanh thu'];
+        const vals   = withRevenue.length ? withRevenue.map(d => d.doanhthu) : [1];
+        
+        const ctx = document.getElementById('donutChart').getContext('2d');
+        if (donutChartInstance) {
+            donutChartInstance.destroy();
+        }
+        
+        donutChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { labels, datasets: [{ data: vals, backgroundColor: colors.slice(0, vals.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
             options: { cutout: '62%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${Number(c.raw).toLocaleString('vi-VN')}đ` } } } }
         });
         document.getElementById('donutLegend').innerHTML = labels.map((l, i) =>
             `<div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l}</div>`).join('');
+            
+        // Cập nhật text ở giữa
+        const totalRev = withRevenue.length ? withRevenue.reduce((sum, d) => sum + d.doanhthu, 0) : 0;
+        document.getElementById('donutLabel').innerHTML = `Doanh Thu<br>${Number(totalRev).toLocaleString('vi-VN')}đ`;
     }
 
+    let barChartInstance = null;
     function renderBar() {
         if (!document.getElementById('barChart')) return;
-        new Chart(document.getElementById('barChart').getContext('2d'), {
+        const ctx = document.getElementById('barChart').getContext('2d');
+        if (barChartInstance) {
+            barChartInstance.destroy();
+        }
+        
+        barChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['24/03','25/03','26/03','27/03','28/03','29/03','30/03'],
-                datasets: [{ label: 'Xe Máy', data: [460,370,300,365,355,95,240], backgroundColor: '#2980b9', borderRadius: 4, hoverBackgroundColor: '#1a5276' }]
+                labels: barChartLabels.length ? barChartLabels : ['Chưa có dữ liệu'],
+                datasets: [{ label: 'Lượt xe vào', data: barChartData.length ? barChartData : [0], backgroundColor: '#2980b9', borderRadius: 4, hoverBackgroundColor: '#1a5276' }]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: true, labels: { font: { size: 11 }, color: '#5d6d7e' } } },
                 scales: {
                     x: { grid: { color: '#eaecee' }, ticks: { font: { size: 11 }, color: '#5d6d7e' } },
-                    y: { grid: { color: '#eaecee' }, ticks: { font: { size: 11 }, color: '#5d6d7e', callback: v => v + 'K' } }
+                    y: { grid: { color: '#eaecee' }, ticks: { font: { size: 11 }, color: '#5d6d7e', callback: v => v } }
                 }
             }
         });
     }
 
-    renderReportTable();
-    renderDonut();
-    renderBar();
+    window.fetchReportData();
 });
 
 /* ── NHẬN DIỆN PAGE: TAB SWITCHING ────────────────────── */
@@ -870,7 +910,12 @@ async function doCheckOut() {
     });
     const data = await res.json();
     if (data.success) {
-      setAlert('ĐÃ CHO XE RA: ' + plate, 'ok');
+      const feeStr = data.fee ? Number(data.fee).toLocaleString('vi-VN') + ' VNĐ' : '0 VNĐ';
+      setAlert('ĐÃ CHO XE RA: ' + plate + ' - Phí: ' + feeStr, 'ok');
+      
+      const feeVal = document.getElementById('feeVal');
+      if (feeVal) feeVal.textContent = feeStr;
+      
       const infoOut = document.getElementById('info-out');
       const infoStatus = document.getElementById('info-status');
       if (infoOut) infoOut.textContent = fmtDateTime(new Date().toISOString());
@@ -1063,5 +1108,60 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     fetchEmployees();
+});
+
+// LOGOUT HANDLER
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[onclick*="login.html"], a[href*="login.html"]').forEach(el => {
+        el.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try { await fetch('/api/logout'); } catch(err) {}
+            window.location.href = '/login';
+        });
+    });
+});
+
+// CHANGE PASSWORD HANDLER
+document.addEventListener('DOMContentLoaded', () => {
+    const cpForm = document.getElementById('changePasswordForm');
+    if (cpForm) {
+        cpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const oldP = document.getElementById('oldPassword').value;
+            const newP = document.getElementById('newPassword').value;
+            const confP = document.getElementById('confirmPassword').value;
+            if (newP !== confP) {
+                alert('Mật khẩu mới không khớp!');
+                return;
+            }
+            try {
+                const res = await fetch('/api/change_password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({old_password: oldP, new_password: newP})
+                });
+                const data = await res.json();
+                alert(data.message);
+                if (data.success) {
+                    window.location.href = '/dashboard';
+                }
+            } catch(err) { alert('Lỗi kết nối!'); }
+        });
+    }
+
+    // Intercept "Đổi Mật Khẩu" link in sidebar
+    document.querySelectorAll('span, a, li').forEach(el => {
+        if (el.textContent && el.textContent.trim() === 'Đổi Mật Khẩu' && (el.tagName === 'SPAN' || el.tagName === 'A')) {
+            const container = el.closest('li') || el;
+            if (container) {
+                container.style.cursor = 'pointer';
+                container.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.href = '/changepassword';
+                });
+            }
+        }
+    });
 });
 

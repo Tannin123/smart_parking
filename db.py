@@ -108,21 +108,28 @@ def check_in(plate: str) -> tuple[bool, str]:
     conn.close()
     return True, "Cho xe vào thành công!"
 
-def check_out(plate: str) -> tuple[bool, str]:
+def check_out(plate: str) -> tuple[bool, str, int]:
     conn = get_connection()
-    if not conn: return False, "Lỗi kết nối CSDL!"
-    cur = conn.cursor()
+    if not conn: return False, "Lỗi kết nối CSDL!", 0
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        cur.execute("ALTER TABLE parking_logs ADD COLUMN fee INT DEFAULT 0")
+    except:
+        pass
     cur.execute("SELECT id FROM parking_logs WHERE plate = %s AND status = 'IN' ORDER BY id DESC LIMIT 1", (plate,))
     row = cur.fetchone()
     if not row:
         conn.close()
-        return False, "Xe này chưa được giữ hoặc đã ra khỏi bãi!"
-    log_id = row[0]
+        return False, "Xe này chưa được giữ hoặc đã ra khỏi bãi!", 0
+    log_id = row['id']
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur.execute("UPDATE parking_logs SET time_out = %s, status = 'OUT' WHERE id = %s", (now_str, log_id))
+    cur.execute("SELECT price_turn FROM pricing ORDER BY id ASC LIMIT 1")
+    p_row = cur.fetchone()
+    fee = p_row['price_turn'] if p_row else 5000
+    cur.execute("UPDATE parking_logs SET time_out = %s, status = 'OUT', fee = %s WHERE id = %s", (now_str, fee, log_id))
     conn.commit()
     conn.close()
-    return True, "Cho xe ra thành công!"
+    return True, "Cho xe ra thành công!", fee
 
 def get_recent_logs(limit: int = 20) -> list[dict]:
     conn = get_connection()
@@ -149,6 +156,19 @@ def verify_login(username, password):
     conn.close()
     if user: return True, dict(user)
     return False, None
+
+def change_password(user_id, old_password, new_password):
+    conn = get_connection()
+    if not conn: return False, "Lỗi kết nối CSDL"
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE id = %s AND password = %s", (user_id, old_password))
+    if not cur.fetchone():
+        conn.close()
+        return False, "Mật khẩu cũ không đúng"
+    cur.execute("UPDATE users SET password = %s WHERE id = %s", (new_password, user_id))
+    conn.commit()
+    conn.close()
+    return True, "Đổi mật khẩu thành công"
 
 def get_users():
     conn = get_connection()
@@ -262,3 +282,73 @@ def delete_pricing(pricing_id):
         return False
     finally:
         conn.close()
+
+# === MODULE THỐNG KÊ (REPORT) ===
+def get_report_data(from_date_str, to_date_str):
+    conn = get_connection()
+    if not conn: return {"tableData": [], "barChartLabels": [], "barChartData": []}
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # Check if fee column exists
+        cur.execute("SHOW COLUMNS FROM parking_logs LIKE 'fee'")
+        if not cur.fetchone():
+            cur.execute("ALTER TABLE parking_logs ADD COLUMN fee INT DEFAULT 0")
+            conn.commit()
+            
+        # Thống kê tổng quan
+        query = """
+        SELECT 
+            COUNT(*) as total_in,
+            SUM(CASE WHEN status = 'OUT' THEN 1 ELSE 0 END) as total_out,
+            SUM(CASE WHEN status = 'OUT' THEN fee ELSE 0 END) as total_revenue
+        FROM parking_logs
+        WHERE time_in >= %s AND time_in <= %s
+        """
+        cur.execute(query, (from_date_str, to_date_str))
+        row = cur.fetchone()
+        
+        total_revenue = int(row['total_revenue'] or 0) if row else 0
+        total_in = int(row['total_in'] or 0) if row else 0
+        total_out = int(row['total_out'] or 0) if row else 0
+        
+        tableData = [
+            {
+                "name": "Tất cả",
+                "doanhthu": total_revenue,
+                "vao": total_in,
+                "ra": total_out,
+                "highlight": True
+            }
+        ]
+        
+        # Thống kê biểu đồ theo ngày
+        query_daily = """
+        SELECT 
+            DATE(time_in) as log_date,
+            COUNT(*) as count_in
+        FROM parking_logs
+        WHERE time_in >= %s AND time_in <= %s
+        GROUP BY DATE(time_in)
+        ORDER BY DATE(time_in) ASC
+        """
+        cur.execute(query_daily, (from_date_str, to_date_str))
+        daily_rows = cur.fetchall()
+        
+        barLabels = []
+        barData = []
+        for dr in daily_rows:
+            date_obj = dr['log_date']
+            barLabels.append(date_obj.strftime('%d/%m'))
+            barData.append(dr['count_in'])
+            
+        return {
+            "tableData": tableData,
+            "barChartLabels": barLabels,
+            "barChartData": barData
+        }
+    except Exception as e:
+        logging.error(f"Error getting report data: {e}")
+        return {"tableData": [], "barChartLabels": [], "barChartData": []}
+    finally:
+        conn.close()
+

@@ -159,8 +159,8 @@ def parking_out():
     if not plate:
         return jsonify({'success': False, 'error': 'Thiếu biển số.'}), 400
     
-    success, msg = db.check_out(plate)
-    return jsonify({'success': success, 'message': msg})
+    success, msg, fee = db.check_out(plate)
+    return jsonify({'success': success, 'message': msg, 'fee': fee})
 
 # ── GET /api/parking/history ──────────────────────────────────────────────────
 

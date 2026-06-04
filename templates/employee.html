@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -19,11 +19,11 @@
                     <li class="dropdown-container">
                         <a href="#" id="menu-he-thong">Hệ thống</a>
                         <ul class="dropdown-menu" id="dropdown-he-thong">
-                            <li onclick="window.location.href='login.html'" style="cursor:pointer;">
+                            <li onclick="window.location.href='/logout'" style="cursor:pointer;">
                                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
                                 <span>Đăng Xuất</span>
                             </li>
-                            <li>
+                            <li onclick="window.location.href='changepassword.html'" style="cursor:pointer;">
                                 <i class="fa-solid fa-lock"></i>
                                 <span>Đổi Mật Khẩu</span>
                             </li>
@@ -64,7 +64,7 @@
         <div class="main-wrapper">
             <aside class="sidebar">
                 <div class="sidebar-menu">
-                    <div class="menu-item" onclick="window.location.href='login.html'">
+                    <div class="menu-item" onclick="window.location.href='/logout'">
                         <i class="fa-solid fa-power-off"></i>
                         <span>Đăng xuất</span>
                     </div>
@@ -74,7 +74,7 @@
                         <span>Trang chủ</span>
                     </div>
                     <div class="divider"></div>
-                    <div class="menu-item" onclick="window.location.href='nhandien.html'">
+                    <div class="menu-item" onclick="window.location.href='detect.html'">
                         <i class="fa-solid fa-camera"></i>
                         <span>Nhận diện</span>
                     </div>
