@@ -235,199 +235,6 @@
     border-color: #1a5276;
 }
 
-.pricing-page {
-    background: #f0f2f5;
-    min-height: 100vh;
-}
-
-.pricing-page .content-area {
-    padding-top: 48px;
-    overflow-y: auto;
-}
-
-.pricing-page .page-title-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-.pricing-page .page-title-card h1 {
-    margin: 0;
-    font-size: 22px;
-    color: #0f172a;
-    font-family: 'Merriweather', serif;
-}
-
-.pricing-page .page-title-card p {
-    margin: 4px 0 0;
-    color: #64748b;
-    font-size: 13px;
-}
-
-.pricing-page .section-card {
-    background: #fff;
-    border: 1px solid #c8d3dc;
-    border-radius: 4px;
-    margin-bottom: 18px;
-    overflow: hidden;
-}
-
-.pricing-page .section-header {
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-bottom: 1px solid #c8d3dc;
-    background: #eaf1f8;
-    color: #215A88;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.pricing-page .pricing-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-.pricing-page .pricing-toolbar label {
-    font-size: 13px;
-    color: #475569;
-    min-width: 70px;
-}
-
-.pricing-page .pricing-toolbar .form-input {
-    width: 220px;
-    min-width: 180px;
-}
-
-.pricing-page .table-summary {
-    margin-left: auto;
-    color: #475569;
-    font-size: 13px;
-}
-
-.pricing-page .emp-table {
-    background: #fff;
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.pricing-page .emp-table th,
-.pricing-page .emp-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid #e2e8f0;
-    color: #334155;
-}
-
-.pricing-page .emp-table th {
-    background: #f8fafc;
-    font-weight: 700;
-    font-size: 12px;
-}
-
-.pricing-page .emp-table tr:hover td {
-    background: #eff6ff;
-}
-
-.pricing-page .price-tag {
-    display: inline-flex;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: #e0f2fe;
-    color: #0c4a6e;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.pricing-page .time-badge {
-    display: inline-flex;
-    padding: 4px 9px;
-    border-radius: 999px;
-    background: #eef2ff;
-    color: #1d4ed8;
-    font-size: 12px;
-}
-
-.pricing-page .form-body {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 18px;
-    padding: 18px;
-}
-
-.pricing-page .form-fields {
-    display: grid;
-    gap: 14px;
-}
-
-.pricing-page .form-row {
-    display: grid;
-    gap: 6px;
-}
-
-.pricing-page .form-row label {
-    color: #475569;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.pricing-page .form-input,
-.pricing-page select {
-    width: 100%;
-    min-height: 32px;
-    border-radius: 0;
-    border: 1px solid #a0adb8;
-    padding: 0 8px;
-    background: #fff;
-    color: #222;
-    font-size: 14px;
-    outline: none;
-}
-
-.pricing-page .form-input:focus,
-.pricing-page select:focus {
-    border-color: #215A88;
-    background: #fff;
-}
-
-.pricing-page .actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.pricing-page .btn {
-    min-width: 90px;
-    height: 34px;
-    border-radius: 0;
-    border: 1px solid #1a4a72;
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-weight: normal;
-    font-size: 14px;
-}
-
-.pricing-page .btn:hover { opacity: 0.85; }
-
-.pricing-page .btn-add,
-.pricing-page .btn-save,
-.pricing-page .btn-edit,
-.pricing-page .btn-delete { background: #215A88; }
-
-.pricing-page .footer {
-    margin-top: 8px;
-    color: #64748b;
-}
-
 .btn-red {
     background: #e74c3c;
     color: #fff;
@@ -453,13 +260,13 @@
 }
 
 /* EMPLOYEE PAGE */
-.employee-page {
+.employee-page , .pricing-page {
     font-family: Arial, sans-serif;
     background: #dce6ef;
     min-height: 100vh;
 }
 
-.employee-page .top-header {
+.employee-page .top-header , .pricing-page .top-header {
     background: #E2F2FC;
     color: #000;
     padding: 0 20px 0 115px;
@@ -467,25 +274,25 @@
     min-height: 35px;
 }
 
-.employee-page .top-nav > ul {
+.employee-page .top-nav > ul , .pricing-page .top-nav > ul {
     gap: 30px;
 }
 
-.employee-page .top-nav a {
+.employee-page .top-nav a , .pricing-page .top-nav a {
     color: #000;
 }
 
-.employee-page .content-area {
-    padding-top: 60px;
+.employee-page .content-area , .pricing-page .content-area {
+    padding-top: 24px;
     overflow-y: auto;
 }
 
-.employee-page .wrap {
+.employee-page .wrap , .pricing-page .wrap {
     width: min(1200px, calc(100% - 40px));
     margin: 0 auto 20px;
 }
 
-.employee-page .page-title-card {
+.employee-page .page-title-card , .pricing-page .page-title-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -493,7 +300,7 @@
     margin-bottom: 16px;
 }
 
-.employee-page .page-title-card h1 {
+.employee-page .page-title-card h1 , .pricing-page .page-title-card h1 {
     font-size: 18px;
     font-weight: bold;
     color: #1a1a1a;
@@ -501,21 +308,21 @@
     font-family: Arial, sans-serif;
 }
 
-.employee-page .page-title-card p {
+.employee-page .page-title-card p , .pricing-page .page-title-card p {
     margin: 0;
     font-size: 13px;
     color: #64748b;
 }
 
-.employee-page .section-card {
+.employee-page .section-card , .pricing-page .section-card {
     background: #fff;
     border: 1px solid #a0adb8;
     border-radius: 0;
     overflow: hidden;
-    margin-bottom: 14px;
+    margin-bottom: 0px;
 }
 
-.employee-page .section-header {
+.employee-page .section-header , .pricing-page .section-header {
     padding: 8px 14px;
     display: flex;
     align-items: center;
@@ -527,11 +334,11 @@
     font-size: 13px;
 }
 
-.employee-page .section-header i {
+.employee-page .section-header i , .pricing-page .section-header i {
     font-size: 15px;
 }
 
-.employee-page .form-body {
+.employee-page .form-body , .pricing-page .form-body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 220px;
     gap: 22px;
@@ -539,20 +346,20 @@
     align-items: center;
 }
 
-.employee-page .form-fields {
+.employee-page .form-fields , .pricing-page .form-fields {
     display: grid;
     grid-template-columns: 130px minmax(0, 1fr);
     gap: 14px 16px;
     align-items: center;
 }
 
-.employee-page .form-label {
+.employee-page .form-label , .pricing-page .form-label {
     color: #333;
     font-size: 14px;
     text-align: right;
 }
 
-.employee-page .form-input {
+.employee-page .form-input , .pricing-page .form-input {
     width: 100%;
     height: 32px;
     border-radius: 0;
@@ -564,22 +371,22 @@
     outline: none;
 }
 
-.employee-page .form-input:focus {
+.employee-page .form-input:focus , .pricing-page .form-input:focus {
     border-color: #215A88;
     background: #fff;
 }
 
-.employee-page .date-wrap {
+.employee-page .date-wrap , .pricing-page .date-wrap {
     display: flex;
     gap: 8px;
     align-items: center;
 }
 
-.employee-page .date-wrap .form-input {
+.employee-page .date-wrap .form-input , .pricing-page .date-wrap .form-input {
     flex: 1;
 }
 
-.employee-page .cal-btn {
+.employee-page .cal-btn , .pricing-page .cal-btn {
     width: 32px;
     height: 32px;
     border-radius: 0;
@@ -591,13 +398,13 @@
     cursor: pointer;
 }
 
-.employee-page .gender-wrap {
+.employee-page .gender-wrap , .pricing-page .gender-wrap {
     display: flex;
     gap: 16px;
     align-items: center;
 }
 
-.employee-page .gender-opt {
+.employee-page .gender-opt , .pricing-page .gender-opt {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -606,13 +413,13 @@
     cursor: pointer;
 }
 
-.employee-page .gender-opt input[type=radio] {
+.employee-page .gender-opt input[type=radio] , .pricing-page .gender-opt input[type=radio] {
     accent-color: #2563eb;
     width: 16px;
     height: 16px;
 }
 
-.employee-page .avatar-col {
+.employee-page .avatar-col , .pricing-page .avatar-col {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -621,7 +428,7 @@
     align-self: center;
 }
 
-.employee-page .avatar-circle {
+.employee-page .avatar-circle , .pricing-page .avatar-circle {
     width: 112px;
     height: 112px;
     border-radius: 999px;
@@ -632,12 +439,12 @@
     overflow: hidden;
 }
 
-.employee-page .avatar-circle i {
+.employee-page .avatar-circle i , .pricing-page .avatar-circle i {
     font-size: 48px;
     color: #ffffff;
 }
 
-.employee-page .avatar-btn {
+.employee-page .avatar-btn , .pricing-page .avatar-btn {
     background: #215A88;
     color: white;
     border: 1px solid #1a4a72;
@@ -650,7 +457,7 @@
     gap: 6px;
 }
 
-.employee-page .actions {
+.employee-page .actions , .pricing-page .actions {
     grid-column: 1 / -1;
     display: flex;
     justify-content: center;
@@ -659,7 +466,7 @@
     padding-top: 4px;
 }
 
-.employee-page .btn {
+.employee-page .btn , .pricing-page .btn {
     min-width: 90px;
     height: 34px;
     border-radius: 0;
@@ -673,14 +480,14 @@
     font-size: 14px;
 }
 
-.employee-page .btn:hover { opacity: 0.85; }
+.employee-page .btn:hover , .pricing-page .btn:hover { opacity: 0.85; }
 
-.employee-page .btn-add { background: #215A88; }
-.employee-page .btn-save { background: #215A88; }
-.employee-page .btn-edit { background: #215A88; }
-.employee-page .btn-delete { background: #215A88; }
+.employee-page .btn-add , .pricing-page .btn-add { background: #215A88; }
+.employee-page .btn-save , .pricing-page .btn-save { background: #215A88; }
+.employee-page .btn-edit , .pricing-page .btn-edit { background: #215A88; }
+.employee-page .btn-delete , .pricing-page .btn-delete { background: #215A88; }
 
-.employee-page .emp-table {
+.employee-page .emp-table , .pricing-page .emp-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
@@ -688,7 +495,9 @@
 }
 
 .employee-page .emp-table th,
-.employee-page .emp-table td {
+.pricing-page .emp-table th,
+
+.employee-page .emp-table td , .pricing-page .emp-table td {
     padding: 9px 14px;
     border: 1px solid #a0adb8;
     text-align: left;
@@ -696,20 +505,20 @@
     font-size: 14px;
 }
 
-.employee-page .emp-table th {
+.employee-page .emp-table th , .pricing-page .emp-table th {
     background: #d0dce8;
     font-size: 14px;
     font-weight: bold;
     color: #1a1a1a;
 }
 
-.employee-page .emp-table tr:hover td { background: #eaf1f8; }
+.employee-page .emp-table tr:hover td , .pricing-page .emp-table tr:hover td { background: #eaf1f8; }
 
-.employee-page .emp-table tr.selected td { background: #b8d0e8; }
+.employee-page .emp-table tr.selected td , .pricing-page .emp-table tr.selected td { background: #b8d0e8; }
 
-.employee-page .emp-id { color: #215A88; font-weight: bold; }
+.employee-page .emp-id , .pricing-page .emp-id { color: #215A88; font-weight: bold; }
 
-.employee-page .gender-badge {
+.employee-page .gender-badge , .pricing-page .gender-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -719,10 +528,10 @@
     font-weight: 600;
 }
 
-.employee-page .male { color: #1d4ed8; }
-.employee-page .female { color: #be185d; }
+.employee-page .male , .pricing-page .male { color: #1d4ed8; }
+.employee-page .female , .pricing-page .female { color: #be185d; }
 
-.employee-page .footer {
+.employee-page .footer , .pricing-page .footer {
     margin-top: 18px;
     text-align: center;
     padding: 14px 0;
@@ -733,13 +542,13 @@
 }
 
 @media (max-width: 960px) {
-    .employee-page .form-body { grid-template-columns: 1fr; }
-    .employee-page .form-fields { grid-template-columns: 110px 1fr; }
+    .employee-page .form-body ,     .pricing-page .form-body { grid-template-columns: 1fr; }
+    .employee-page .form-fields ,     .pricing-page .form-fields { grid-template-columns: 110px 1fr; }
 }
 
 @media (max-width: 720px) {
-    .employee-page .form-fields { grid-template-columns: 1fr; text-align: left; }
-    .employee-page .form-label { text-align: left; }
+    .employee-page .form-fields ,     .pricing-page .form-fields { grid-template-columns: 1fr; text-align: left; }
+    .employee-page .form-label ,     .pricing-page .form-label { text-align: left; }
 }
 
 table {
@@ -1531,24 +1340,10 @@ body.nd-page { overflow: hidden; }
     border-top: none;
 }
 
-/* Mode toggle */
-.hint-text {
-    text-align: center;
-    font-size: 11px;
-    border: 1px solid #a0adb8;
-    margin: 0 10px 6px;
-    padding: 4px;
-    background: #f2f2f2;
-    cursor: pointer;
-    flex-shrink: 0;
-    font-family: Arial, sans-serif;
-}
-.hint-text:hover { background: #dce6ef; }
-
 /* Card info table */
 .card-info-table {
     width: calc(100% - 20px);
-    margin: 0 10px 8px;
+    margin: 20px 10px 8px;
     border-collapse: collapse;
     flex-shrink: 0;
 }
@@ -1747,4 +1542,31 @@ body.nd-page { overflow: hidden; }
 .fee-cell    { color: red; font-weight: bold; }
 .empty-cell  { color: #aaa; font-style: italic; text-align: center; padding: 12px; }
 
+.vehicle-type-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
 
+.vehicle-type-selector .btn-vt {
+    flex: 1;
+    padding: 5px 0;
+    border: 1px solid #c8d3dc;
+    background-color: #f8fafc;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vehicle-type-selector .btn-vt:hover {
+    background-color: #e2e8f0;
+}
+
+.vehicle-type-selector .btn-vt.active {
+    background-color: #215A88;
+    color: #ffffff;
+    border-color: #1a4a72;
+}

@@ -22,7 +22,7 @@
             <li onclick="window.location.href='/logout'" style="cursor:pointer;">
               <i class="fa-solid fa-arrow-right-from-bracket"></i><span>Đăng Xuất</span>
             </li>
-            <li onclick="window.location.href='changepassword.html'" style="cursor:pointer;"><i class="fa-solid fa-lock"></i><span>Đổi Mật Khẩu</span></li>
+            <li onclick="window.location.href='changepass.html'" style="cursor:pointer;"><i class="fa-solid fa-lock"></i><span>Đổi Mật Khẩu</span></li>
           </ul>
         </li>
         <li class="dropdown-container">
@@ -136,8 +136,10 @@
           </div>
 
           <!-- Mode -->
-          <div class="hint-text" id="modeBtn" onclick="toggleMode()">
-            SPACE : xe đạp
+          <div class="vehicle-type-selector">
+            <button class="btn-vt" id="vt-xe-dap" onclick="setVehicleType(0)">Xe đạp</button>
+            <button class="btn-vt active" id="vt-xe-may" onclick="setVehicleType(1)">Xe máy</button>
+            <button class="btn-vt" id="vt-o-to" onclick="setVehicleType(2)">Ô tô</button>
           </div>
 
           <!-- Card info -->

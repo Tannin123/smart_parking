@@ -61,49 +61,68 @@ def init_db():
             last_name VARCHAR(50),
             dob VARCHAR(20),
             gender VARCHAR(10),
-            address VARCHAR(255)
+            address VARCHAR(255),
+            status VARCHAR(20) DEFAULT 'active',
+            note TEXT,
+            created_at DATETIME
+        )
+    ''')
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'active'")
+        cur.execute("ALTER TABLE users ADD COLUMN note TEXT")
+        cur.execute("ALTER TABLE users ADD COLUMN created_at DATETIME")
+    except:
+        pass
+
+    # 2.5 Bảng work_shifts
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS work_shifts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NOT NULL,
+            shift_name VARCHAR(100) NOT NULL,
+            work_date DATE NOT NULL,
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            note TEXT,
+            created_at DATETIME,
+            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
 
-    # 3. Bảng pricing
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS pricing (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            type VARCHAR(50) NOT NULL,
-            price_turn INT NOT NULL,
-            time_in VARCHAR(20),
-            time_out VARCHAR(20),
-            note VARCHAR(255)
-        )
-    ''')
+    # 3. Bảng pricing — do pricing.py quản lý schema, db.py không tạo lại
+    #    (tránh xung đột cột cũ: type/price_turn vs. vehicle_type/price_per_hour)
 
     # Thêm tài khoản admin mặc định
     cur.execute("SELECT id FROM users WHERE username = 'admin'")
     if not cur.fetchone():
         cur.execute("INSERT INTO users (username, password, role) VALUES ('admin', 'admin123', 'admin')")
     
-    # Thêm cấu hình giá mặc định
-    cur.execute("SELECT count(*) FROM pricing")
-    if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO pricing (type, price_turn, time_in, time_out, note) VALUES ('Xe Máy', 5000, '06:00', '22:00', 'Thường ngày')")
-        cur.execute("INSERT INTO pricing (type, price_turn, time_in, time_out, note) VALUES ('Xe Tay Ga', 5000, '06:00', '22:00', 'Thường ngày')")
-        cur.execute("INSERT INTO pricing (type, price_turn, time_in, time_out, note) VALUES ('Ô tô', 15000, '06:00', '22:00', '')")
+    # Migration: thêm cột vehicle_type vào parking_logs nếu chưa có
+    try:
+        cur.execute("ALTER TABLE parking_logs ADD COLUMN vehicle_type VARCHAR(50) DEFAULT 'xe_may'")
+    except:
+        pass
 
     conn.commit()
     conn.close()
     logging.info("[DB] Đã khởi tạo cấu trúc CSDL đầy đủ.")
 
 # === MODULE NHẬN DIỆN ===
-def check_in(plate: str) -> tuple[bool, str]:
+def check_in(plate: str, vehicle_type: str = 'xe_may') -> tuple[bool, str]:
     conn = get_connection()
     if not conn: return False, "Lỗi kết nối CSDL!"
     cur = conn.cursor()
+    # Migration: đảm bảo cột vehicle_type tồn tại
+    try:
+        cur.execute("ALTER TABLE parking_logs ADD COLUMN vehicle_type VARCHAR(50) DEFAULT 'xe_may'")
+    except:
+        pass
     cur.execute("SELECT id FROM parking_logs WHERE plate = %s AND status = 'IN'", (plate,))
     if cur.fetchone():
         conn.close()
         return False, "Xe đang ở trong bãi, chưa được cho ra!"
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur.execute("INSERT INTO parking_logs (plate, time_in, status) VALUES (%s, %s, 'IN')", (plate, now_str))
+    cur.execute("INSERT INTO parking_logs (plate, time_in, status, vehicle_type) VALUES (%s, %s, 'IN', %s)", (plate, now_str, vehicle_type))
     conn.commit()
     conn.close()
     return True, "Cho xe vào thành công!"
@@ -116,16 +135,37 @@ def check_out(plate: str) -> tuple[bool, str, int]:
         cur.execute("ALTER TABLE parking_logs ADD COLUMN fee INT DEFAULT 0")
     except:
         pass
-    cur.execute("SELECT id FROM parking_logs WHERE plate = %s AND status = 'IN' ORDER BY id DESC LIMIT 1", (plate,))
+    cur.execute("SELECT id, time_in, vehicle_type FROM parking_logs WHERE plate = %s AND status = 'IN' ORDER BY id DESC LIMIT 1", (plate,))
     row = cur.fetchone()
     if not row:
         conn.close()
         return False, "Xe này chưa được giữ hoặc đã ra khỏi bãi!", 0
     log_id = row['id']
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur.execute("SELECT price_turn FROM pricing ORDER BY id ASC LIMIT 1")
+    time_in = row['time_in']
+    if isinstance(time_in, str):
+        time_in = datetime.datetime.strptime(time_in, "%Y-%m-%d %H:%M:%S")
+    now = datetime.datetime.now()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Lấy vehicle_type của xe này
+    vehicle_type = row.get('vehicle_type') or 'xe_may'
+
+    # Tính số giờ đỗ (làm tròn lên, tối thiểu 1 giờ)
+    import math
+    duration_minutes = int((now - time_in).total_seconds() / 60)
+    hours_billed = math.ceil(duration_minutes / 60) if duration_minutes > 0 else 1
+
+    # Lấy giá từ bảng pricing đúng loại xe
+    cur.execute("SELECT price_per_hour FROM pricing WHERE vehicle_type = %s ORDER BY id ASC LIMIT 1", (vehicle_type,))
     p_row = cur.fetchone()
-    fee = p_row['price_turn'] if p_row else 5000
+    if not p_row:
+        # Fallback: lấy bất kỳ hàng nào
+        cur.execute("SELECT price_per_hour FROM pricing ORDER BY id ASC LIMIT 1")
+        p_row = cur.fetchone()
+    price_per_hour = p_row['price_per_hour'] if p_row else 5000
+
+    fee = hours_billed * price_per_hour
+
     cur.execute("UPDATE parking_logs SET time_out = %s, status = 'OUT', fee = %s WHERE id = %s", (now_str, fee, log_id))
     conn.commit()
     conn.close()
@@ -174,27 +214,38 @@ def get_users():
     conn = get_connection()
     if not conn: return []
     cur = conn.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT id, username, role, first_name, last_name, dob, gender, address FROM users ORDER BY id DESC")
+    cur.execute("SELECT id, username, role, first_name, last_name, dob, gender, address, status, note, created_at FROM users ORDER BY id DESC")
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+def get_user_by_id(user_id):
+    conn = get_connection()
+    if not conn: return None
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("SELECT id, username, role, first_name, last_name, dob, gender, address, status, note, created_at FROM users WHERE id = %s", (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 def add_user(data):
     conn = get_connection()
     if not conn: return False
     cur = conn.cursor()
     try:
-        # Use username as default if username not explicitly provided in employee form
-        # We assume data is from employee form: empId (username), firstName, lastName, dob, gender, address
         username = data.get('username', data.get('empId'))
-        # Password default to 123456 for new employees
         password = data.get('password', '123456')
+        role = data.get('role', 'employee')
+        status = data.get('status', 'active')
+        note = data.get('note', '')
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cur.execute("""
-            INSERT INTO users (username, password, first_name, last_name, dob, gender, address, role) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'employee')
-        """, (username, password, data.get('firstName'), data.get('lastName'), data.get('dob'), data.get('gender'), data.get('address')))
+            INSERT INTO users (username, password, first_name, last_name, dob, gender, address, role, status, note, created_at) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (username, password, data.get('firstName', data.get('name')), data.get('lastName', ''), data.get('dob'), data.get('gender'), data.get('address'), role, status, note, now_str))
+        new_id = cur.lastrowid
         conn.commit()
-        return True
+        return new_id
     except Exception as e:
         logging.error(f"Error adding user: {e}")
         return False
@@ -206,11 +257,26 @@ def update_user(user_id, data):
     if not conn: return False
     cur = conn.cursor()
     try:
+        # Lấy thông tin cũ
+        cur.execute("SELECT role, status FROM users WHERE id=%s", (user_id,))
+        current = cur.fetchone()
+        if not current: return False
+        
         username = data.get('username', data.get('empId'))
-        cur.execute("""
-            UPDATE users SET username=%s, first_name=%s, last_name=%s, dob=%s, gender=%s, address=%s 
-            WHERE id=%s
-        """, (username, data.get('firstName'), data.get('lastName'), data.get('dob'), data.get('gender'), data.get('address'), user_id))
+        role = data.get('role', current[0])
+        status = data.get('status', current[1])
+        note = data.get('note', '')
+        
+        if 'password' in data and data['password']:
+            cur.execute("""
+                UPDATE users SET username=%s, password=%s, first_name=%s, last_name=%s, dob=%s, gender=%s, address=%s, role=%s, status=%s, note=%s
+                WHERE id=%s
+            """, (username, data['password'], data.get('firstName', data.get('name')), data.get('lastName', ''), data.get('dob'), data.get('gender'), data.get('address'), role, status, note, user_id))
+        else:
+            cur.execute("""
+                UPDATE users SET username=%s, first_name=%s, last_name=%s, dob=%s, gender=%s, address=%s, role=%s, status=%s, note=%s
+                WHERE id=%s
+            """, (username, data.get('firstName', data.get('name')), data.get('lastName', ''), data.get('dob'), data.get('gender'), data.get('address'), role, status, note, user_id))
         conn.commit()
         return True
     except Exception as e:
@@ -232,7 +298,73 @@ def delete_user(user_id):
     finally:
         conn.close()
 
-# === MODULE BẢNG GIÁ (PRICING) ===
+def get_shifts(user_id, limit=20, offset=0):
+    conn = get_connection()
+    if not conn: return []
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("SELECT * FROM work_shifts WHERE employee_id=%s ORDER BY work_date, start_time LIMIT %s OFFSET %s", (user_id, limit, offset))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_shift_by_id(shift_id):
+    conn = get_connection()
+    if not conn: return None
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("SELECT * FROM work_shifts WHERE id=%s", (shift_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def add_shift(user_id, data):
+    conn = get_connection()
+    if not conn: return False
+    cur = conn.cursor()
+    try:
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute("""
+            INSERT INTO work_shifts (employee_id, shift_name, work_date, start_time, end_time, note, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, data.get('shift_name'), data.get('work_date'), data.get('start_time'), data.get('end_time'), data.get('note'), now_str))
+        new_id = cur.lastrowid
+        conn.commit()
+        return new_id
+    except Exception as e:
+        logging.error(f"Error adding shift: {e}")
+        return False
+    finally:
+        conn.close()
+
+def update_shift(shift_id, data):
+    conn = get_connection()
+    if not conn: return False
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE work_shifts SET shift_name=%s, work_date=%s, start_time=%s, end_time=%s, note=%s WHERE id=%s
+        """, (data.get('shift_name'), data.get('work_date'), data.get('start_time'), data.get('end_time'), data.get('note'), shift_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        logging.error(f"Error updating shift: {e}")
+        return False
+    finally:
+        conn.close()
+
+def delete_shift(shift_id):
+    conn = get_connection()
+    if not conn: return False
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM work_shifts WHERE id=%s", (shift_id,))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+# === MODULE BẢNG GIÁ (PRICING) — dùng schema mới từ pricing.py ===
 def get_pricing():
     conn = get_connection()
     if not conn: return []
@@ -247,11 +379,28 @@ def add_pricing(data):
     if not conn: return False
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO pricing (type, price_turn, time_in, time_out, note) VALUES (%s, %s, %s, %s, %s)", 
-                    (data.get('type'), data.get('price_turn', 0), data.get('time_in'), data.get('time_out'), data.get('note')))
+        import datetime as _dt
+        now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute(
+            "INSERT INTO pricing (vehicle_type, label, price_per_turn, price_per_hour, "
+            "free_minutes, time_open, time_close, note, created_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                data.get('vehicle_type', ''),
+                data.get('label', data.get('type', '')),
+                data.get('price_per_turn', 0),
+                data.get('price_per_hour', data.get('price_turn', 0)),
+                data.get('free_minutes', 0),
+                data.get('time_open', data.get('time_in', '06:00')),
+                data.get('time_close', data.get('time_out', '22:00')),
+                data.get('note', ''),
+                now, now,
+            )
+        )
         conn.commit()
         return True
-    except:
+    except Exception as e:
+        logging.error(f"Error add_pricing: {e}")
         return False
     finally:
         conn.close()
@@ -261,11 +410,28 @@ def update_pricing(pricing_id, data):
     if not conn: return False
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE pricing SET type=%s, price_turn=%s, time_in=%s, time_out=%s, note=%s WHERE id=%s", 
-                    (data.get('type'), data.get('price_turn', 0), data.get('time_in'), data.get('time_out'), data.get('note'), pricing_id))
+        import datetime as _dt
+        now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute(
+            "UPDATE pricing SET vehicle_type=%s, label=%s, price_per_turn=%s, price_per_hour=%s, "
+            "free_minutes=%s, time_open=%s, time_close=%s, note=%s, updated_at=%s WHERE id=%s",
+            (
+                data.get('vehicle_type', ''),
+                data.get('label', data.get('type', '')),
+                data.get('price_per_turn', 0),
+                data.get('price_per_hour', data.get('price_turn', 0)),
+                data.get('free_minutes', 0),
+                data.get('time_open', data.get('time_in', '06:00')),
+                data.get('time_close', data.get('time_out', '22:00')),
+                data.get('note', ''),
+                now,
+                pricing_id,
+            )
+        )
         conn.commit()
         return True
-    except:
+    except Exception as e:
+        logging.error(f"Error update_pricing: {e}")
         return False
     finally:
         conn.close()
@@ -351,4 +517,26 @@ def get_report_data(from_date_str, to_date_str):
         return {"tableData": [], "barChartLabels": [], "barChartData": []}
     finally:
         conn.close()
+
+# === MODULE DEBUG ===
+def debug_check():
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
+    conn = get_connection()
+    if not conn:
+        print("Lỗi kết nối CSDL")
+        return
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    
+    print("=== PRICING ===")
+    cur.execute("SELECT id, vehicle_type, label, price_per_turn, price_per_hour FROM pricing ORDER BY id")
+    for r in cur.fetchall():
+        print(dict(r))
+
+    print("\n=== RECENT parking_logs ===")
+    cur.execute("SELECT id, plate, status, vehicle_type, time_in, time_out, fee FROM parking_logs ORDER BY id DESC LIMIT 5")
+    for r in cur.fetchall():
+        print(dict(r))
+
+    conn.close()
 

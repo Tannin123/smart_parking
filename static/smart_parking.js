@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Sidebar menu active state
     const menuItems = document.querySelectorAll('.menu-item');
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    
+
     menuItems.forEach(item => {
         const href = item.getAttribute('onclick') || '';
-        if (href.includes(currentPage) || 
+        if (href.includes(currentPage) ||
             (currentPage === '' && href.includes('Dashboard.html')) ||
             (currentPage === 'nhandien.html' && href.includes('nhandien.html')) ||
             (currentPage === 'report.html' && href.includes('report.html')) ||
@@ -72,12 +72,12 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const user = (document.getElementById('_010_txtTaiKhoan') || {}).value || '';
         const pass = (document.getElementById('_010_txtMatKhau') || {}).value || '';
-        
+
         try {
             const res = await fetch('/api/login', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: user, password: pass})
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
             });
             const data = await res.json();
             if (data.success) {
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 alert(data.message || 'Tài khoản hoặc mật khẩu không đúng');
             }
-        } catch(err) {
+        } catch (err) {
             alert('Lỗi kết nối máy chủ!');
         }
     });
@@ -94,12 +94,14 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function () {
     if (!document.getElementById('totalCount')) return;
 
-    let data = [];
-    let selectedIdx = null;
+    let data = [];   // mảng rows từ API
+    let selectedIdx = null; // index đang chọn trong data[]
     let filterText = '';
 
-    function fmtPrice(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+    // Format tiền VND
+    function fmtPrice(n) { return Number(n || 0).toLocaleString('vi-VN') + 'đ'; }
 
+    // ── Đọc danh sách từ API GET /api/pricing ─────────────────────────────
     async function fetchPricing() {
         try {
             const res = await fetch('/api/pricing');
@@ -107,101 +109,192 @@ document.addEventListener('DOMContentLoaded', function () {
             if (result.success) {
                 data = result.data || [];
                 renderTable();
+            } else {
+                console.error('fetchPricing:', result.message);
             }
-        } catch(e) { console.error('Lỗi tải giá vé:', e); }
+        } catch (e) { console.error('Lỗi tải bảng giá:', e); }
     }
 
+    // ── Render bảng (sử dụng đúng field API) ──────────────────────────────
     function renderTable() {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
         const totalEl = document.getElementById('totalCount');
         if (totalEl) totalEl.textContent = data.length;
-        const summaryEl = document.getElementById('summaryRow');
-        if (summaryEl) summaryEl.textContent = 'Tổng cộng: ' + data.length + ' loại xe đang hoạt động';
-        let rows = data.filter(d => d.type.toLowerCase().includes(filterText.toLowerCase()));
+
+        // Lọc theo tên hiển thị (label) hoặc mã (vehicle_type)
+        const rows = data.filter(d =>
+            (d.label || '').toLowerCase().includes(filterText.toLowerCase()) ||
+            (d.vehicle_type || '').toLowerCase().includes(filterText.toLowerCase())
+        );
+
         tbody.innerHTML = rows.map(d => {
             const realIdx = data.indexOf(d);
             const sel = realIdx === selectedIdx ? 'selected' : '';
             return `<tr class="${sel}" onclick="selectRow(${realIdx})">
                 <td>${realIdx + 1}</td>
-                <td>${d.type}</td>
-                <td><span class="price-tag">${fmtPrice(d.price_turn)}</span></td>
-                <td><span class="time-badge">${d.time_in}</span></td>
-                <td><span class="time-badge">${d.time_out}</span></td>
+                <td>${d.label || ''}</td>
+                <td><code style="font-size:11px;color:#64748b">${d.vehicle_type || ''}</code></td>
+                <td><span class="price-tag">${fmtPrice(d.price_per_hour)}/giờ</span></td>
+                <td><span class="time-badge">${d.time_open || ''}</span></td>
+                <td><span class="time-badge">${d.time_close || ''}</span></td>
             </tr>`;
         }).join('');
     }
 
+    // ── Hiển thị thông báo ─────────────────────────────────────────────────
     function showStatus(msg, color) {
         const el = document.getElementById('statusMsg');
         if (!el) return;
         el.style.color = color || '#27ae60';
         el.textContent = msg;
-        setTimeout(() => { el.textContent = ''; }, 2500);
+        setTimeout(() => { el.textContent = ''; }, 3000);
     }
 
+    // ── Điền form khi click vào 1 hàng ─────────────────────────────────────
     window.selectRow = function (idx) {
         selectedIdx = idx;
         const d = data[idx];
-        document.getElementById('f_type').value = d.type;
-        document.getElementById('f_price_turn').value = d.price_turn;
-        document.getElementById('f_time_in').value = d.time_in;
-        document.getElementById('f_time_out').value = d.time_out;
+        if (!d) return;
+
+        // Mã loại xe — vehicle_type
+        const vtEl = document.getElementById('f_vehicle_type');
+        if (vtEl) vtEl.value = d.vehicle_type || '';
+
+        // Tên hiển thị — label
+        const typeEl = document.getElementById('f_type');
+        if (typeEl) typeEl.value = d.label || '';
+
+        // Giá/giờ — price_per_hour
+        const phEl = document.getElementById('f_price_hour');
+        if (phEl) phEl.value = d.price_per_hour || 0;
+
+        // Giờ mở cửa — time_open
+        const tiEl = document.getElementById('f_time_in');
+        if (tiEl) tiEl.value = d.time_open || '06:00';
+
+        // Giờ đóng cửa — time_close
+        const toEl = document.getElementById('f_time_out');
+        if (toEl) toEl.value = d.time_close || '22:00';
+
+        // Ghi chú — note
+        const noteEl = document.getElementById('f_note');
+        if (noteEl) noteEl.value = d.note || '';
+
         renderTable();
     };
+
+    // ── Thêm mới hoặc cập nhật — POST /api/pricing | PUT /api/pricing/:id ──
     window.addOrUpdate = async function () {
-        const obj = {
-            type: document.getElementById('f_type').value,
-            price_turn: parseInt(document.getElementById('f_price_turn').value) || 0,
-            time_in: document.getElementById('f_time_in').value,
-            time_out: document.getElementById('f_time_out').value,
-            note: document.getElementById('f_note') ? document.getElementById('f_note').value : '',
+        const vehicle_type = (document.getElementById('f_vehicle_type')?.value || '').trim().toLowerCase();
+        const label = (document.getElementById('f_type')?.value || '').trim();
+        const price_per_hour = parseInt(document.getElementById('f_price_hour')?.value) || 0;
+        const time_open = document.getElementById('f_time_in')?.value || '06:00';
+        const time_close = document.getElementById('f_time_out')?.value || '22:00';
+        const note = (document.getElementById('f_note')?.value || '').trim();
+
+        // Validation
+        if (!label) { showStatus('Vui lòng nhập Tên hiển thị.', '#e74c3c'); return; }
+        if (!vehicle_type) { showStatus('Vui lòng nhập Mã loại xe.', '#e74c3c'); return; }
+
+        // Payload gửi API — price_per_turn=0, free_minutes=0 (không dùng trên UI này)
+        const payload = {
+            vehicle_type,
+            label,
+            price_per_turn: 0,
+            price_per_hour,
+            free_minutes: 0,
+            time_open,
+            time_close,
+            note,
         };
+
         try {
-            if (selectedIdx !== null) { 
+            let res, result;
+            if (selectedIdx !== null) {
+                // Cập nhật: PUT /api/pricing/<id>
                 const id = data[selectedIdx].id;
-                const res = await fetch('/api/pricing/' + id, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(obj)});
-                const result = await res.json();
-                if (result.success) { showStatus('Đã cập nhật thành công!'); fetchPricing(); clearForm(); }
-            } else { 
-                const res = await fetch('/api/pricing', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(obj)});
-                const result = await res.json();
-                if (result.success) { showStatus('Đã thêm loại xe mới!'); fetchPricing(); clearForm(); }
+                res = await fetch('/api/pricing/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                result = await res.json();
+                if (result.success) {
+                    showStatus('✅ Cập nhật thành công!');
+                    fetchPricing();
+                    clearForm();
+                } else {
+                    showStatus(result.message || 'Lỗi cập nhật.', '#e74c3c');
+                }
+            } else {
+                // Thêm mới: POST /api/pricing
+                res = await fetch('/api/pricing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                result = await res.json();
+                if (result.success) {
+                    showStatus('✅ Thêm loại xe mới thành công!');
+                    fetchPricing();
+                    clearForm();
+                } else {
+                    showStatus(result.message || 'Lỗi thêm mới.', '#e74c3c');
+                }
             }
-        } catch(e) { showStatus('Lỗi máy chủ', '#e74c3c'); }
+        } catch (e) {
+            console.error('addOrUpdate error:', e);
+            showStatus('Lỗi kết nối máy chủ.', '#e74c3c');
+        }
     };
+
+    // ── Xóa — DELETE /api/pricing/:id ────────────────────────────────────────
     window.deleteRow = async function () {
         if (selectedIdx === null) { showStatus('Chọn một hàng để xóa.', '#e74c3c'); return; }
         const id = data[selectedIdx].id;
+        const label = data[selectedIdx].label || 'loại xe này';
+        if (!confirm(`Xóa "${label}"?`)) return;
         try {
-            const res = await fetch('/api/pricing/' + id, {method: 'DELETE'});
+            const res = await fetch('/api/pricing/' + id, { method: 'DELETE' });
             const result = await res.json();
-            if(result.success) {
-                window.clearForm();
+            if (result.success) {
+                showStatus(' Đã xóa "' + label + '"');
+                clearForm();
                 fetchPricing();
-                showStatus('Đã xóa!', '#e74c3c');
+            } else {
+                showStatus(result.message || 'Lỗi xóa.', '#e74c3c');
             }
-        } catch(e) { showStatus('Lỗi máy chủ', '#e74c3c'); }
+        } catch (e) { showStatus('Lỗi kết nối máy chủ.', '#e74c3c'); }
     };
+
+    // ── Xóa form / reset về chế độ Thêm mới ──────────────────────────────
     window.clearForm = function () {
         selectedIdx = null;
-        document.getElementById('f_type').value = 'Xe Máy';
-        document.getElementById('f_price_turn').value = '';
-        document.getElementById('f_time_in').value = '06:00';
-        document.getElementById('f_time_out').value = '22:00';
-        if(document.getElementById('f_note')) document.getElementById('f_note').value = '';
+        ['f_vehicle_type', 'f_type', 'f_note'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const phEl = document.getElementById('f_price_hour'); if (phEl) phEl.value = '';
+        const tiEl = document.getElementById('f_time_in'); if (tiEl) tiEl.value = '06:00';
+        const toEl = document.getElementById('f_time_out'); if (toEl) toEl.value = '22:00';
         renderTable();
     };
+
+    // ── Lọc bảng ────────────────────────────────────────────────────────────
     window.filterTable = function () {
-        filterText = document.getElementById('searchInput').value;
+        const inp = document.getElementById('searchInput');
+        filterText = inp ? inp.value : '';
         renderTable();
     };
     window.resetFilter = function () {
-        document.getElementById('searchInput').value = '';
+        const inp = document.getElementById('searchInput');
+        if (inp) inp.value = '';
         filterText = '';
         renderTable();
     };
 
+    // ── Khởi động — load dữ liệu từ API ──────────────────────────────────
     fetchPricing();
 });
 
@@ -215,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     const todayStr = `${yyyy}-${mm}-${dd}`;
-    
+
     document.getElementById('fromDate').value = `${todayStr}T00:00`;
     document.getElementById('toDate').value = `${todayStr}T23:59`;
 
@@ -226,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function fmtNum(n) { return n === 0 ? '<span style="color:#aab">0</span>' : Number(n).toLocaleString('vi-VN'); }
     function fmtMoney(n) { return n === 0 ? '<span style="color:#aab">0</span>' : `<span style="color:#e74c3c;font-weight:600">${Number(n).toLocaleString('vi-VN')}</span>`; }
 
-    window.fetchReportData = async function() {
+    window.fetchReportData = async function () {
         const fromDate = document.getElementById('fromDate').value;
         const toDate = document.getElementById('toDate').value;
         try {
@@ -240,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderDonut();
                 renderBar();
             }
-        } catch(e) {
+        } catch (e) {
             console.error('Lỗi lấy dữ liệu thống kê:', e);
         }
     }
@@ -271,16 +364,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let donutChartInstance = null;
     function renderDonut() {
-        const colors = ['#2980b9','#1abc9c','#e91e8c','#f39c12','#8e44ad','#e74c3c','#16a085','#d35400'];
+        const colors = ['#2980b9', '#1abc9c', '#e91e8c', '#f39c12', '#8e44ad', '#e74c3c', '#16a085', '#d35400'];
         const withRevenue = tableData.filter(d => d.doanhthu > 0);
         const labels = withRevenue.length ? withRevenue.map(d => d.name) : ['Chưa có doanh thu'];
-        const vals   = withRevenue.length ? withRevenue.map(d => d.doanhthu) : [1];
-        
+        const vals = withRevenue.length ? withRevenue.map(d => d.doanhthu) : [1];
+
         const ctx = document.getElementById('donutChart').getContext('2d');
         if (donutChartInstance) {
             donutChartInstance.destroy();
         }
-        
+
         donutChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { labels, datasets: [{ data: vals, backgroundColor: colors.slice(0, vals.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }] },
@@ -288,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         document.getElementById('donutLegend').innerHTML = labels.map((l, i) =>
             `<div class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l}</div>`).join('');
-            
+
         // Cập nhật text ở giữa
         const totalRev = withRevenue.length ? withRevenue.reduce((sum, d) => sum + d.doanhthu, 0) : 0;
         document.getElementById('donutLabel').innerHTML = `Doanh Thu<br>${Number(totalRev).toLocaleString('vi-VN')}đ`;
@@ -301,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (barChartInstance) {
             barChartInstance.destroy();
         }
-        
+
         barChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -333,30 +426,30 @@ function switchTab(name, btn) {
 
 /* ── RESULT HELPERS ─────────────────────────────────────── */
 function showResultContent() {
-    document.getElementById('resultEmpty').style.display   = 'none';
-    document.getElementById('resultError').style.display   = 'none';
+    document.getElementById('resultEmpty').style.display = 'none';
+    document.getElementById('resultError').style.display = 'none';
     document.getElementById('resultContent').style.display = 'flex';
     document.getElementById('btnReset').disabled = false;
 }
 
 function showResultError(msg) {
-    document.getElementById('resultEmpty').style.display   = 'none';
+    document.getElementById('resultEmpty').style.display = 'none';
     document.getElementById('resultContent').style.display = 'none';
-    document.getElementById('resultError').style.display   = 'block';
+    document.getElementById('resultError').style.display = 'block';
     document.getElementById('resultErrorText').textContent = msg;
-    document.getElementById('resultSubtitle').textContent  = 'Đã xảy ra lỗi';
+    document.getElementById('resultSubtitle').textContent = 'Đã xảy ra lỗi';
     document.getElementById('btnReset').disabled = false;
 }
 
 function clearResult() {
-    document.getElementById('resultEmpty').style.display   = 'flex';
+    document.getElementById('resultEmpty').style.display = 'flex';
     document.getElementById('resultContent').style.display = 'none';
-    document.getElementById('resultError').style.display   = 'none';
-    document.getElementById('resultSubtitle').textContent  = 'Chưa có kết quả — hãy chọn ảnh hoặc video';
+    document.getElementById('resultError').style.display = 'none';
+    document.getElementById('resultSubtitle').textContent = 'Chưa có kết quả — hãy chọn ảnh hoặc video';
     document.getElementById('btnReset').disabled = true;
-    document.getElementById('resultImage').style.display   = 'none';
-    document.getElementById('resultInfo').style.display    = 'none';
-    document.getElementById('resultDownload').style.display= 'none';
+    document.getElementById('resultImage').style.display = 'none';
+    document.getElementById('resultInfo').style.display = 'none';
+    document.getElementById('resultDownload').style.display = 'none';
 }
 
 /* ── IMAGE ──────────────────────────────────────────────── */
@@ -373,7 +466,7 @@ function onImageSelected(e) {
     const area = document.getElementById('uploadAreaImg');
     area.classList.add('has-file');
     area.querySelector('.up-title').textContent = selectedImageFile.name;
-    area.querySelector('.up-hint').textContent  = (selectedImageFile.size / 1024).toFixed(0) + ' KB';
+    area.querySelector('.up-hint').textContent = (selectedImageFile.size / 1024).toFixed(0) + ' KB';
 
     document.getElementById('btnDetectImg').disabled = false;
     clearResult();
@@ -381,14 +474,14 @@ function onImageSelected(e) {
 
 async function detectImage() {
     if (!selectedImageFile) return;
-    const btn  = document.getElementById('btnDetectImg');
+    const btn = document.getElementById('btnDetectImg');
     const icon = document.getElementById('iconImg');
     btn.disabled = true;
     icon.className = 'fa-solid fa-spinner fa-spin';
     try {
         const formData = new FormData();
         formData.append('image', selectedImageFile);
-        const res    = await fetch('/api/detect/image', { method: 'POST', body: formData });
+        const res = await fetch('/api/detect/image', { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
             showImageResult(result);
@@ -436,7 +529,7 @@ function onVideoSelected(e) {
     const area = document.getElementById('uploadAreaVideo');
     area.classList.add('has-file');
     area.querySelector('.up-title').textContent = selectedVideoFile.name;
-    area.querySelector('.up-hint').textContent  = (selectedVideoFile.size / 1024 / 1024).toFixed(1) + ' MB';
+    area.querySelector('.up-hint').textContent = (selectedVideoFile.size / 1024 / 1024).toFixed(1) + ' MB';
     const fi = document.getElementById('videoFileInfo');
     fi.style.display = 'flex';
     document.getElementById('videoFilename').textContent = selectedVideoFile.name;
@@ -446,7 +539,7 @@ function onVideoSelected(e) {
 
 async function detectVideo() {
     if (!selectedVideoFile) return;
-    const btn  = document.getElementById('btnDetectVideo');
+    const btn = document.getElementById('btnDetectVideo');
     const icon = document.getElementById('iconVideo');
     btn.disabled = true;
     btn.childNodes[1].textContent = ' Đang xử lý…';
@@ -454,7 +547,7 @@ async function detectVideo() {
     try {
         const formData = new FormData();
         formData.append('video', selectedVideoFile);
-        const res    = await fetch('/api/detect/video', { method: 'POST', body: formData });
+        const res = await fetch('/api/detect/video', { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
             showVideoResult(result);
@@ -497,26 +590,26 @@ function showVideoResult(result) {
 }
 
 /* ── WEBCAM ─────────────────────────────────────────────── */
-let webcamActive   = false;
-let _webcamPollId  = null;   // setInterval ID cho result polling
+let webcamActive = false;
+let _webcamPollId = null;   // setInterval ID cho result polling
 
 function startWebcam() {
     webcamActive = true;
-    const feed        = document.getElementById('webcamFeed');
+    const feed = document.getElementById('webcamFeed');
     const placeholder = document.getElementById('webcamPlaceholder');
     feed.src = '/api/detect/webcam/stream';
-    feed.style.display        = 'block';
+    feed.style.display = 'block';
     placeholder.style.display = 'none';
     document.getElementById('btnStartCam').style.display = 'none';
-    document.getElementById('btnStopCam').style.display  = 'flex';
+    document.getElementById('btnStopCam').style.display = 'flex';
 
     // Hiện panel kết quả ở trạng thái chờ
     showResultContent();
     document.getElementById('resultSubtitle').textContent = 'Đang chờ nhận diện…';
     document.getElementById('resultPlates').innerHTML =
         '<span style="font-size:11px;color:#94a3b8;font-family:Inter,sans-serif">Camera đang quét biển số…</span>';
-    document.getElementById('resultImage').style.display  = 'none';
-    document.getElementById('resultInfo').style.display   = 'none';
+    document.getElementById('resultImage').style.display = 'none';
+    document.getElementById('resultInfo').style.display = 'none';
     document.getElementById('resultDownload').style.display = 'none';
 
     // Polling kết quả mỗi 1 giây
@@ -526,7 +619,7 @@ function startWebcam() {
 async function _pollWebcamResult() {
     if (!webcamActive) return;
     try {
-        const res    = await fetch('/api/detect/webcam/result');
+        const res = await fetch('/api/detect/webcam/result');
         const result = await res.json();
         if (!result.success) return;
 
@@ -559,13 +652,13 @@ function stopWebcam() {
         _webcamPollId = null;
     }
 
-    const feed        = document.getElementById('webcamFeed');
+    const feed = document.getElementById('webcamFeed');
     const placeholder = document.getElementById('webcamPlaceholder');
     feed.src = '';
-    feed.style.display        = 'none';
+    feed.style.display = 'none';
     placeholder.style.display = 'flex';
     document.getElementById('btnStartCam').style.display = 'flex';
-    document.getElementById('btnStopCam').style.display  = 'none';
+    document.getElementById('btnStopCam').style.display = 'none';
 }
 
 /* ── PARKING LOGIC ────────────────────────────────────────── */
@@ -575,8 +668,8 @@ async function handleCheckIn(plate) {
     try {
         const res = await fetch('/api/parking/in', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({plate: plate})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plate: plate, vehicle_type: currentVehicleType() })
         });
         const result = await res.json();
         if (result.success) {
@@ -595,8 +688,8 @@ async function handleCheckOut(plate) {
     try {
         const res = await fetch('/api/parking/out', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({plate: plate})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plate: plate })
         });
         const result = await res.json();
         if (result.success) {
@@ -649,336 +742,361 @@ let selectedFile = null;         // File object khi chọn ảnh
 let lastDetectedPlate = '';      // Biển số nhận diện được gần nhất
 let webcamPollId = null;         // ID của setInterval polling webcam result
 let lastWebcamTimestamp = '';    // Tránh cập nhật trùng lặp
-const MODES = [
-  'SPACE : Xe đạp',
-  'SPACE : Xe máy',
-  'SPACE : Ô tô'
-];
-let modeIdx = 0;
+const MODE_VEHICLE_TYPES = ['xe_dap', 'xe_may', 'o_to'];
+let modeIdx = 1;
+
+function currentVehicleType() {
+    return MODE_VEHICLE_TYPES[modeIdx] || 'xe_may';
+}
 
 /* ── Helpers ── */
 function setAlert(msg, type) {
-  const el = document.getElementById('alertMsg');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'warning-text ' + (type || 'info');
+    const el = document.getElementById('alertMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'warning-text ' + (type || 'info');
 }
 
 function fmtDateTime(str) {
-  if (!str) return '—';
-  const d = new Date(str.replace(' ', 'T'));
-  if (isNaN(d)) return str;
-  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN');
+    if (!str) return '—';
+    const d = new Date(str.replace(' ', 'T'));
+    if (isNaN(d)) return str;
+    return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN');
 }
 
 function setScanLoading(on) {
-  const btn = document.getElementById('scanBtn');
-  const icon = document.getElementById('scanIcon');
-  const lbl = document.getElementById('scanLabel');
-  if (!btn || !icon || !lbl) return;
-  btn.classList.toggle('loading', on);
-  icon.className = on ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-magnifying-glass';
-  lbl.textContent = on ? 'ĐANG XỬ LÝ...' : 'NHẬN DIỆN BIỂN SỐ';
+    const btn = document.getElementById('scanBtn');
+    const icon = document.getElementById('scanIcon');
+    const lbl = document.getElementById('scanLabel');
+    if (!btn || !icon || !lbl) return;
+    btn.classList.toggle('loading', on);
+    icon.className = on ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-magnifying-glass';
+    lbl.textContent = on ? 'ĐANG XỬ LÝ...' : 'NHẬN DIỆN BIỂN SỐ';
 }
 
 function showProc(on, msg) {
-  const ov = document.getElementById('procOverlay');
-  if (!ov) return;
-  ov.classList.toggle('show', on);
-  if (msg) {
-    const label = document.getElementById('procLabel');
-    if (label) label.textContent = msg;
-  }
+    const ov = document.getElementById('procOverlay');
+    if (!ov) return;
+    ov.classList.toggle('show', on);
+    if (msg) {
+        const label = document.getElementById('procLabel');
+        if (label) label.textContent = msg;
+    }
 }
 
 function showElement(id) { const el = document.getElementById(id); if (el) el.style.display = 'block'; }
 function hideElement(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
 function updatePlate(plate) {
-  lastDetectedPlate = plate || '';
-  const plateEl = document.getElementById('plateDetected');
-  if (plateEl) plateEl.textContent = plate || '— — — —';
-  const hasPlate = !!plate;
-  const btnIn = document.getElementById('btnIn');
-  const btnOut = document.getElementById('btnOut');
-  if (btnIn) btnIn.disabled = !hasPlate;
-  if (btnOut) btnOut.disabled = !hasPlate;
+    lastDetectedPlate = plate || '';
+    const plateEl = document.getElementById('plateDetected');
+    if (plateEl) plateEl.textContent = plate || '— — — —';
+    const hasPlate = !!plate;
+    const btnIn = document.getElementById('btnIn');
+    const btnOut = document.getElementById('btnOut');
+    if (btnIn) btnIn.disabled = !hasPlate;
+    if (btnOut) btnOut.disabled = !hasPlate;
 }
 
 function setSource(t) {
-  if (curSrc === 'webcam' && t !== 'webcam') stopWebcamPoll();
-  curSrc = t;
+    if (curSrc === 'webcam' && t !== 'webcam') stopWebcamPoll();
+    curSrc = t;
 
-  ['image', 'webcam'].forEach(s => {
-    const el = document.getElementById('src-' + s);
-    if (el) el.classList.toggle('active', s === t);
-  });
+    ['image', 'webcam'].forEach(s => {
+        const el = document.getElementById('src-' + s);
+        if (el) el.classList.toggle('active', s === t);
+    });
 
-  const fw = document.getElementById('fileWrapper');
-  const fi = document.getElementById('fileInput');
-  if (t === 'image') {
-    if (fi) fi.accept = 'image/*';
-    if (fw) fw.classList.add('show');
-  } else {
-    if (fw) fw.classList.remove('show');
-  }
-
-  const badgeMap = { image: 'CAM-01 · ẢNH', webcam: 'CAM-01 · WEBCAM' };
-  const badgeEl = document.getElementById('camBadge');
-  if (badgeEl) badgeEl.textContent = badgeMap[t];
-  const titleLeft = document.getElementById('camTitleLeft');
-  if (titleLeft) titleLeft.textContent = t === 'webcam' ? 'Webcam - Nhận Diện' : 'Ảnh tải lên';
-
-  hideElement('previewImg');
-  hideElement('annotatedImg');
-  hideElement('camPlaceholder');
-
-  if (t === 'webcam') {
-    showElement('webcamStream');
-    const camLive = document.getElementById('camLive');
-    if (camLive) camLive.classList.add('show');
-    startWebcamPoll();
-    setAlert('WEBCAM ĐANG TRỰC TIẾP — SẴN SÀNG NHẬN DIỆN', 'ok');
-  } else {
-    hideElement('webcamStream');
-    const camLive = document.getElementById('camLive');
-    if (camLive) camLive.classList.remove('show');
-    if (!selectedFile) {
-      showElement('camPlaceholder');
-      setAlert('CHỌN FILE ĐỂ BẮT ĐẦU NHẬN DIỆN', 'info');
+    const fw = document.getElementById('fileWrapper');
+    const fi = document.getElementById('fileInput');
+    if (t === 'image') {
+        if (fi) fi.accept = 'image/*';
+        if (fw) fw.classList.add('show');
+    } else {
+        if (fw) fw.classList.remove('show');
     }
-  }
 
-  selectedFile = null;
-  updatePlate('');
+    const badgeMap = { image: 'CAM-01 · ẢNH', webcam: 'CAM-01 · WEBCAM' };
+    const badgeEl = document.getElementById('camBadge');
+    if (badgeEl) badgeEl.textContent = badgeMap[t];
+    const titleLeft = document.getElementById('camTitleLeft');
+    if (titleLeft) titleLeft.textContent = t === 'webcam' ? 'Webcam - Nhận Diện' : 'Ảnh tải lên';
+
+    hideElement('previewImg');
+    hideElement('annotatedImg');
+    hideElement('camPlaceholder');
+
+    if (t === 'webcam') {
+        showElement('webcamStream');
+        const camLive = document.getElementById('camLive');
+        if (camLive) camLive.classList.add('show');
+        startWebcamPoll();
+        setAlert('WEBCAM ĐANG TRỰC TIẾP — SẴN SÀNG NHẬN DIỆN', 'ok');
+    } else {
+        hideElement('webcamStream');
+        const camLive = document.getElementById('camLive');
+        if (camLive) camLive.classList.remove('show');
+        if (!selectedFile) {
+            showElement('camPlaceholder');
+            setAlert('CHỌN FILE ĐỂ BẮT ĐẦU NHẬN DIỆN', 'info');
+        }
+    }
+
+    selectedFile = null;
+    updatePlate('');
+    setVehicleType(1); // Reset mode to xe_may
 }
 
 function onStreamError() {
-  const camLive = document.getElementById('camLive');
-  if (camLive) camLive.classList.remove('show');
-  hideElement('webcamStream');
-  const ph = document.getElementById('camPlaceholder');
-  if (ph) {
-    const span = ph.querySelector('span');
-    if (span) span.textContent = 'Không kết nối được webcam server';
-    showElement('camPlaceholder');
-  }
-  setAlert('LỖI: KHÔNG KẾT NỐI ĐƯỢC WEBCAM', '');
+    const camLive = document.getElementById('camLive');
+    if (camLive) camLive.classList.remove('show');
+    hideElement('webcamStream');
+    const ph = document.getElementById('camPlaceholder');
+    if (ph) {
+        const span = ph.querySelector('span');
+        if (span) span.textContent = 'Không kết nối được webcam server';
+        showElement('camPlaceholder');
+    }
+    setAlert('LỖI: KHÔNG KẾT NỐI ĐƯỢC WEBCAM', '');
 }
 
 function handleFile(inp) {
-  const f = inp.files[0];
-  if (!f) return;
-  selectedFile = f;
-  const url = URL.createObjectURL(f);
-  hideElement('camPlaceholder');
-  hideElement('annotatedImg');
+    const f = inp.files[0];
+    if (!f) return;
+    selectedFile = f;
+    const url = URL.createObjectURL(f);
+    hideElement('camPlaceholder');
+    hideElement('annotatedImg');
 
-  if (curSrc === 'image') {
-    const img = document.getElementById('previewImg');
-    if (img) {
-      img.src = url;
-      showElement('previewImg');
+    if (curSrc === 'image') {
+        const img = document.getElementById('previewImg');
+        if (img) {
+            img.src = url;
+            showElement('previewImg');
+        }
+        setAlert('ĐÃ TẢI ẢNH — NHẤN NHẬN DIỆN ĐỂ XỬ LÝ', 'info');
     }
-    setAlert('ĐÃ TẢI ẢNH — NHẤN NHẬN DIỆN ĐỂ XỬ LÝ', 'info');
-  }
-  updatePlate('');
+    updatePlate('');
 }
 
 function doScan() {
-  if (curSrc === 'image') doScanImage();
-  else doScanWebcam();
+    if (curSrc === 'image') doScanImage();
+    else doScanWebcam();
 }
 
 async function doScanImage() {
-  if (!selectedFile) { setAlert('HÃY CHỌN ẢNH TRƯỚC', ''); return; }
-  setScanLoading(true);
-  showProc(true, 'Đang nhận diện ảnh...');
-  try {
-    const fd = new FormData();
-    fd.append('image', selectedFile);
-    const res = await fetch('/api/detect/image', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success) {
-      const plates = data.plates || [];
-      const plate = plates.length ? plates[0].text : '';
-      updatePlate(plate);
-      if (data.annotated_b64) {
-        const ai = document.getElementById('annotatedImg');
-        if (ai) {
-          ai.src = 'data:image/jpeg;base64,' + data.annotated_b64;
-          hideElement('previewImg');
-          showElement('annotatedImg');
+    if (!selectedFile) { setAlert('HÃY CHỌN ẢNH TRƯỚC', ''); return; }
+    setScanLoading(true);
+    showProc(true, 'Đang nhận diện ảnh...');
+    try {
+        const fd = new FormData();
+        fd.append('image', selectedFile);
+        const res = await fetch('/api/detect/image', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+            const plates = data.plates || [];
+            const plate = plates.length ? plates[0].text : '';
+            updatePlate(plate);
+            if (data.annotated_b64) {
+                const ai = document.getElementById('annotatedImg');
+                if (ai) {
+                    ai.src = 'data:image/jpeg;base64,' + data.annotated_b64;
+                    hideElement('previewImg');
+                    showElement('annotatedImg');
+                }
+            }
+            if (plate) {
+                setAlert('ĐÃ NHẬN DIỆN: ' + plate, 'ok');
+            } else {
+                setAlert('KHÔNG TÌM THẤY BIỂN SỐ TRONG ẢNH', '');
+            }
+        } else {
+            setAlert('LỖI: ' + (data.error || 'Không xác định'), '');
         }
-      }
-      if (plate) {
-        setAlert('ĐÃ NHẬN DIỆN: ' + plate, 'ok');
-      } else {
-        setAlert('KHÔNG TÌM THẤY BIỂN SỐ TRONG ẢNH', '');
-      }
-    } else {
-      setAlert('LỖI: ' + (data.error || 'Không xác định'), '');
+    } catch {
+        setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
+    } finally {
+        setScanLoading(false);
+        showProc(false);
     }
-  } catch {
-    setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
-  } finally {
-    setScanLoading(false);
-    showProc(false);
-  }
 }
 
 async function doScanWebcam() {
-  setScanLoading(true);
-  try {
-    const res = await fetch('/api/detect/webcam/result');
-    const data = await res.json();
-    if (data.success && data.plates && data.plates.length) {
-      const plate = data.plates[0].text;
-      updatePlate(plate);
-      setAlert('WEBCAM NHẬN DIỆN: ' + plate, 'ok');
-    } else {
-      setAlert('CHƯA PHÁT HIỆN BIỂN SỐ – GIỮ BIỂN SỐ TRƯỚC CAMERA', 'info');
+    setScanLoading(true);
+    try {
+        const res = await fetch('/api/detect/webcam/result');
+        const data = await res.json();
+        if (data.success && data.plates && data.plates.length) {
+            const plate = data.plates[0].text;
+            updatePlate(plate);
+            setAlert('WEBCAM NHẬN DIỆN: ' + plate, 'ok');
+        } else {
+            setAlert('CHƯA PHÁT HIỆN BIỂN SỐ – GIỮ BIỂN SỐ TRƯỚC CAMERA', 'info');
+        }
+    } catch {
+        setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
+    } finally {
+        setScanLoading(false);
     }
-  } catch {
-    setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
-  } finally {
-    setScanLoading(false);
-  }
 }
 
 function startWebcamPoll() {
-  stopWebcamPoll();
-  webcamPollId = setInterval(_pollWebcam, 1500);
+    stopWebcamPoll();
+    webcamPollId = setInterval(_pollWebcam, 1500);
 }
 function stopWebcamPoll() {
-  if (webcamPollId) { clearInterval(webcamPollId); webcamPollId = null; }
+    if (webcamPollId) { clearInterval(webcamPollId); webcamPollId = null; }
 }
 
 async function _pollWebcam() {
-  if (curSrc !== 'webcam') return;
-  try {
-    const res  = await fetch('/api/detect/webcam/result');
-    const data = await res.json();
-    if (!data.success) return;
-    if (data.timestamp && data.timestamp === lastWebcamTimestamp) return;
-    lastWebcamTimestamp = data.timestamp || '';
-    if (data.plates && data.plates.length) {
-      const plate = data.plates[0].text;
-      updatePlate(plate);
-      setAlert('WEBCAM PHÁT HIỆN: ' + plate, 'ok');
-    }
-  } catch { }
+    if (curSrc !== 'webcam') return;
+    try {
+        const res = await fetch('/api/detect/webcam/result');
+        const data = await res.json();
+        if (!data.success) return;
+        if (data.timestamp && data.timestamp === lastWebcamTimestamp) return;
+        lastWebcamTimestamp = data.timestamp || '';
+        if (data.plates && data.plates.length) {
+            const plate = data.plates[0].text;
+            updatePlate(plate);
+            setAlert('WEBCAM PHÁT HIỆN: ' + plate, 'ok');
+        }
+    } catch { }
 }
 
 async function doCheckIn() {
-  const plate = lastDetectedPlate;
-  if (!plate) return;
-  try {
-    const res  = await fetch('/api/parking/in', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plate })
-    });
-    const data = await res.json();
-    if (data.success) {
-      setAlert('ĐÃ CHO XE VÀO: ' + plate, 'ok');
-      const infoPlate = document.getElementById('info-plate');
-      const infoIn = document.getElementById('info-in');
-      const infoOut = document.getElementById('info-out');
-      const infoStatus = document.getElementById('info-status');
-      if (infoPlate) infoPlate.textContent = plate;
-      if (infoIn) infoIn.textContent = fmtDateTime(new Date().toISOString());
-      if (infoOut) infoOut.textContent = '—';
-      if (infoStatus) infoStatus.textContent = '✓ TRONG BÃI';
-      loadRecentHistory();
-    } else {
-      setAlert('LỖI: ' + (data.message || data.error || ''), '');
+    const plate = lastDetectedPlate;
+    if (!plate) return;
+    try {
+        const res = await fetch('/api/parking/in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plate, vehicle_type: currentVehicleType() })
+        });
+        const data = await res.json();
+        if (data.success) {
+            let typeName = 'Xe máy';
+            if (currentVehicleType() === 'xe_dap') typeName = 'Xe đạp';
+            if (currentVehicleType() === 'o_to') typeName = 'Ô tô';
+            setAlert('ĐÃ CHO XE VÀO: ' + plate + ' (' + typeName + ')', 'ok');
+            const infoPlate = document.getElementById('info-plate');
+            const infoIn = document.getElementById('info-in');
+            const infoOut = document.getElementById('info-out');
+            const infoStatus = document.getElementById('info-status');
+            if (infoPlate) infoPlate.textContent = plate;
+            if (infoIn) infoIn.textContent = fmtDateTime(new Date().toISOString());
+            if (infoOut) infoOut.textContent = '—';
+            if (infoStatus) infoStatus.textContent = '✓ TRONG BÃI';
+            loadRecentHistory();
+            
+            // Reset về mặc định là xe máy sau khi xử lý xong
+            setVehicleType(1);
+        } else {
+            setAlert('LỖI: ' + (data.message || data.error || ''), '');
+        }
+    } catch {
+        setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
     }
-  } catch {
-    setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
-  }
 }
 
 async function doCheckOut() {
-  const plate = lastDetectedPlate;
-  if (!plate) return;
-  try {
-    const res  = await fetch('/api/parking/out', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plate })
-    });
-    const data = await res.json();
-    if (data.success) {
-      const feeStr = data.fee ? Number(data.fee).toLocaleString('vi-VN') + ' VNĐ' : '0 VNĐ';
-      setAlert('ĐÃ CHO XE RA: ' + plate + ' - Phí: ' + feeStr, 'ok');
-      
-      const feeVal = document.getElementById('feeVal');
-      if (feeVal) feeVal.textContent = feeStr;
-      
-      const infoOut = document.getElementById('info-out');
-      const infoStatus = document.getElementById('info-status');
-      if (infoOut) infoOut.textContent = fmtDateTime(new Date().toISOString());
-      if (infoStatus) infoStatus.textContent = '↩ ĐÃ RA';
-      loadRecentHistory();
-    } else {
-      setAlert('LỖI: ' + (data.message || data.error || ''), '');
+    const plate = lastDetectedPlate;
+    if (!plate) return;
+    try {
+        const res = await fetch('/api/parking/out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plate })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const feeStr = data.fee ? Number(data.fee).toLocaleString('vi-VN') + ' VNĐ' : '0 VNĐ';
+            setAlert('ĐÃ CHO XE RA: ' + plate + ' - Phí: ' + feeStr, 'ok');
+
+            const feeVal = document.getElementById('feeVal');
+            if (feeVal) feeVal.textContent = feeStr;
+
+            const infoOut = document.getElementById('info-out');
+            const infoStatus = document.getElementById('info-status');
+            if (infoOut) infoOut.textContent = fmtDateTime(new Date().toISOString());
+            if (infoStatus) infoStatus.textContent = '↩ ĐÃ RA';
+            loadRecentHistory();
+            
+            // Reset về mặc định là xe máy sau khi xử lý xong
+            setVehicleType(1);
+        } else {
+            setAlert('LỖI: ' + (data.message || data.error || ''), '');
+        }
+    } catch {
+        setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
     }
-  } catch {
-    setAlert('LỖI KẾT NỐI MÁY CHỦ', '');
-  }
+}
+
+function setVehicleType(idx) {
+    modeIdx = idx;
+    const types = ['xe-dap', 'xe-may', 'o-to'];
+    types.forEach((t, i) => {
+        const btn = document.getElementById('vt-' + t);
+        if (btn) {
+            if (i === idx) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    });
 }
 
 function toggleMode() {
-  modeIdx = (modeIdx + 1) % MODES.length;
-  const btn = document.getElementById('modeBtn');
-  if (btn) btn.textContent = MODES[modeIdx];
+    let nextIdx = modeIdx + 1;
+    if (nextIdx > 2) nextIdx = 0;
+    setVehicleType(nextIdx);
 }
 
 async function loadRecentHistory() {
-  const tb = document.getElementById('recentBody');
-  if (!tb) return;
-  try {
-    const res  = await fetch('/api/parking/history');
-    const data = await res.json();
-    if (data.success && data.logs && data.logs.length) {
-      tb.innerHTML = data.logs.map(log => {
-        const isIn = log.status === 'IN';
-        return `<tr>
+    const tb = document.getElementById('recentBody');
+    if (!tb) return;
+    try {
+        const res = await fetch('/api/parking/history');
+        const data = await res.json();
+        if (data.success && data.logs && data.logs.length) {
+            tb.innerHTML = data.logs.map(log => {
+                const isIn = log.status === 'IN';
+                return `<tr>
           <td class="plate-cell">${log.plate}</td>
           <td>${fmtDateTime(log.time_in)}</td>
           <td>${fmtDateTime(log.time_out)}</td>
           <td><span class="${isIn ? 'tag-vao' : 'tag-ra'}">${isIn ? '↓ Trong bãi' : '↑ Đã ra'}</span></td>
         </tr>`;
-      }).join('');
+            }).join('');
 
-      const latest = data.logs[0];
-      const infoPlate = document.getElementById('info-plate');
-      const infoIn = document.getElementById('info-in');
-      const infoOut = document.getElementById('info-out');
-      const infoStatus = document.getElementById('info-status');
-      if (infoPlate) infoPlate.textContent = latest.plate;
-      if (infoIn) infoIn.textContent = fmtDateTime(latest.time_in);
-      if (infoOut) infoOut.textContent = fmtDateTime(latest.time_out);
-      if (infoStatus) infoStatus.textContent = latest.status === 'IN' ? '✓ TRONG BÃI' : '↩ ĐÃ RA';
-    } else {
-      tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Chưa có dữ liệu</td></tr>';
+            const latest = data.logs[0];
+            const infoPlate = document.getElementById('info-plate');
+            const infoIn = document.getElementById('info-in');
+            const infoOut = document.getElementById('info-out');
+            const infoStatus = document.getElementById('info-status');
+            if (infoPlate) infoPlate.textContent = latest.plate;
+            if (infoIn) infoIn.textContent = fmtDateTime(latest.time_in);
+            if (infoOut) infoOut.textContent = fmtDateTime(latest.time_out);
+            if (infoStatus) infoStatus.textContent = latest.status === 'IN' ? '✓ TRONG BÃI' : '↩ ĐÃ RA';
+        } else {
+            tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Chưa có dữ liệu</td></tr>';
+        }
+    } catch {
+        tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Lỗi tải dữ liệu</td></tr>';
     }
-  } catch {
-    tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Lỗi tải dữ liệu</td></tr>';
-  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  setSource('webcam');
-  loadRecentHistory();
-  setInterval(loadRecentHistory, 30000);
-  document.addEventListener('keydown', e => {
-    if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
-      e.preventDefault();
-      toggleMode();
-    }
-  });
+    setSource('webcam');
+    loadRecentHistory();
+    setInterval(loadRecentHistory, 30000);
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            toggleMode();
+        }
+    });
 });
 
 /* EMPLOYEE PAGE LOGIC */
@@ -1005,7 +1123,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }));
                 renderTable();
             }
-        } catch(e) { console.error('Lỗi tải nhân viên:', e); }
+        } catch (e) { console.error('Lỗi tải nhân viên:', e); }
     }
 
     window.renderTable = function () {
@@ -1062,22 +1180,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!d.empId || !d.firstName) { alert('Vui lòng nhập ID và First Name!'); return; }
         if (currentEmployees.find(e => e.id === d.empId)) { alert('ID đã tồn tại!'); return; }
         try {
-            const res = await fetch('/api/users', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d)});
+            const res = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             const result = await res.json();
-            if(result.success) { fetchEmployees(); clearForm(); alert('Thêm thành công'); }
+            if (result.success) { fetchEmployees(); clearForm(); alert('Thêm thành công'); }
             else { alert('Lỗi khi thêm'); }
-        } catch(e) { alert('Lỗi kết nối'); }
+        } catch (e) { alert('Lỗi kết nối'); }
     };
 
     window.saveEmployee = async function () {
         if (!selectedId) { alert('Vui lòng chọn nhân viên cần lưu!'); return; }
         const d = getFormData();
         try {
-            const res = await fetch('/api/users/' + selectedId, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d)});
+            const res = await fetch('/api/users/' + selectedId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             const result = await res.json();
-            if(result.success) { fetchEmployees(); clearForm(); alert('Đã lưu thành công'); }
+            if (result.success) { fetchEmployees(); clearForm(); alert('Đã lưu thành công'); }
             else { alert('Lỗi khi lưu'); }
-        } catch(e) { alert('Lỗi kết nối'); }
+        } catch (e) { alert('Lỗi kết nối'); }
     };
 
     window.editEmployee = function () {
@@ -1089,11 +1207,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!selectedId) { alert('Vui lòng chọn nhân viên cần xóa!'); return; }
         if (!confirm('Xóa nhân viên này?')) return;
         try {
-            const res = await fetch('/api/users/' + selectedId, {method: 'DELETE'});
+            const res = await fetch('/api/users/' + selectedId, { method: 'DELETE' });
             const result = await res.json();
-            if(result.success) { fetchEmployees(); clearForm(); alert('Đã xóa thành công'); }
+            if (result.success) { fetchEmployees(); clearForm(); alert('Đã xóa thành công'); }
             else { alert('Lỗi khi xóa'); }
-        } catch(e) { alert('Lỗi kết nối'); }
+        } catch (e) { alert('Lỗi kết nối'); }
     };
 
     window.changeAvatar = function (event) {
@@ -1116,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            try { await fetch('/api/logout'); } catch(err) {}
+            try { await fetch('/api/logout'); } catch (err) { }
             window.location.href = '/login';
         });
     });
@@ -1138,15 +1256,15 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch('/api/change_password', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({old_password: oldP, new_password: newP})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password: oldP, new_password: newP })
                 });
                 const data = await res.json();
                 alert(data.message);
                 if (data.success) {
                     window.location.href = '/dashboard';
                 }
-            } catch(err) { alert('Lỗi kết nối!'); }
+            } catch (err) { alert('Lỗi kết nối!'); }
         });
     }
 

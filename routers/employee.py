@@ -1,17 +1,18 @@
-import sqlite3
 import datetime
 import logging
 import re
 from functools import wraps
 from flask import Blueprint, request, jsonify, session
-from werkzeug.security import generate_password_hash
+import MySQLdb
+import MySQLdb.cursors
 
-DB_PATH = 'smart_parking.db'
-logger  = logging.getLogger(__name__)
+import db
+
+logger = logging.getLogger(__name__)
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 ROLE_ADMIN      = 'admin'
-ROLE_STAFF      = 'staff'
+ROLE_STAFF      = 'employee'
 STATUS_ACTIVE   = 'active'
 STATUS_INACTIVE = 'inactive'
 VALID_ROLES     = {ROLE_ADMIN, ROLE_STAFF}
@@ -26,55 +27,14 @@ employee_bp = Blueprint('employee_bp', __name__)
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory   = sqlite3.Row
-    conn.isolation_level = None         
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    return db.get_connection()
 
 
 def _rollback(conn):
     try:
-        conn.execute("ROLLBACK")
+        conn.rollback()
     except Exception:
         pass
-
-
-def init_employee_tables():
-    conn = _get_conn()
-    try:
-        conn.execute("BEGIN")
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS employees (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                name       TEXT    NOT NULL,
-                username   TEXT    NOT NULL UNIQUE,
-                password   TEXT    NOT NULL,
-                role       TEXT    NOT NULL DEFAULT 'staff',
-                status     TEXT    NOT NULL DEFAULT 'active',
-                note       TEXT    DEFAULT '',
-                created_at TEXT    NOT NULL
-            )
-        ''')
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS work_shifts (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id INTEGER NOT NULL,
-                shift_name  TEXT    NOT NULL,
-                work_date   TEXT    NOT NULL,
-                start_time  TEXT    NOT NULL,
-                end_time    TEXT    NOT NULL,
-                note        TEXT    DEFAULT '',
-                created_at  TEXT    NOT NULL,
-                FOREIGN KEY (employee_id) REFERENCES employees(id)
-            )
-        ''')
-        conn.execute("COMMIT")
-    except Exception:
-        _rollback(conn)
-        raise
-    finally:
-        conn.close()
 
 
 def _validate_username(username):
@@ -121,11 +81,13 @@ def _validate_shift_input(shift_name, work_date, start_time, end_time):
 
 
 def _count_active_admins(conn):
-    row = conn.execute(
-        "SELECT COUNT(*) AS cnt FROM employees WHERE role=? AND status=?",
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute(
+        "SELECT COUNT(*) AS cnt FROM users WHERE role=%s AND status=%s",
         (ROLE_ADMIN, STATUS_ACTIVE)
-    ).fetchone()
-    return row['cnt']
+    )
+    row = cur.fetchone()
+    return int(row['cnt'] or 0) if row else 0
 
 
 def _parse_pagination(args):
@@ -135,6 +97,18 @@ def _parse_pagination(args):
     except (TypeError, ValueError):
         page, per_page = 1, PAGE_SIZE_DEFAULT
     return page, per_page
+
+
+def _row_to_employee(row):
+    return {
+        'id': row['id'],
+        'name': row.get('first_name') or '',
+        'username': row['username'],
+        'role': row['role'],
+        'status': row['status'],
+        'note': row.get('note') or '',
+        'created_at': row.get('created_at') if row.get('created_at') is not None else ''
+    }
 
 
 def require_admin(f):
@@ -155,28 +129,41 @@ def get_employees():
     offset         = (page - 1) * per_page
 
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
         if q:
-            rows = conn.execute(
-                "SELECT id, name, username, role, status, note, created_at "
-                "FROM employees WHERE name LIKE ? OR username LIKE ? "
-                "ORDER BY id LIMIT ? OFFSET ?",
+            cur.execute(
+                "SELECT id, username, role, status, note, first_name, created_at "
+                "FROM users WHERE first_name LIKE %s OR username LIKE %s "
+                "ORDER BY id LIMIT %s OFFSET %s",
                 (f'%{q}%', f'%{q}%', per_page, offset)
-            ).fetchall()
+            )
         else:
-            rows = conn.execute(
-                "SELECT id, name, username, role, status, note, created_at "
-                "FROM employees ORDER BY id LIMIT ? OFFSET ?",
+            cur.execute(
+                "SELECT id, username, role, status, note, first_name, created_at "
+                "FROM users ORDER BY id LIMIT %s OFFSET %s",
                 (per_page, offset)
-            ).fetchall()
+            )
+        rows = cur.fetchall()
         return jsonify({
             'success': True,
-            'data': [dict(r) for r in rows],
+            'data': [
+                {
+                    'id': r['id'],
+                    'name': r.get('first_name') or '',
+                    'username': r['username'],
+                    'role': r['role'],
+                    'status': r['status'],
+                    'note': r.get('note') or '',
+                    'created_at': r.get('created_at')
+                }
+                for r in rows
+            ],
             'page': page,
             'per_page': per_page,
         }), 200
     except Exception:
-        logger.exception("get_employees error")
+        logger.exception('get_employees error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -187,16 +174,26 @@ def get_employees():
 @require_admin
 def get_employee(emp_id):
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        emp = conn.execute(
-            "SELECT id, name, username, role, status, note, created_at "
-            "FROM employees WHERE id=?", (emp_id,)
-        ).fetchone()
+        cur.execute(
+            "SELECT id, username, role, status, note, first_name, created_at "
+            "FROM users WHERE id = %s", (emp_id,)
+        )
+        emp = cur.fetchone()
         if not emp:
             return jsonify({'success': False, 'message': 'Khong tim thay nhan vien.'}), 404
-        return jsonify({'success': True, 'data': dict(emp)}), 200
+        return jsonify({'success': True, 'data': {
+            'id': emp['id'],
+            'name': emp.get('first_name') or '',
+            'username': emp['username'],
+            'role': emp['role'],
+            'status': emp['status'],
+            'note': emp.get('note') or '',
+            'created_at': emp.get('created_at')
+        }}), 200
     except Exception:
-        logger.exception("get_employee error")
+        logger.exception('get_employee error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -225,26 +222,24 @@ def add_employee():
     if status not in VALID_STATUSES:
         return jsonify({'success': False, 'message': f'Status khong hop le. Chi chap nhan: {", ".join(VALID_STATUSES)}.'}), 400
 
-    hashed = generate_password_hash(password)
-    now    = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN")
-        cur = conn.execute(
-            "INSERT INTO employees (name, username, password, role, status, note, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (name, username, hashed, role, status, note, now)
+        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
+            return jsonify({'success': False, 'message': 'Tai khoan da ton tai trong he thong.'}), 400
+
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute(
+            "INSERT INTO users (username, password, first_name, role, status, note, created_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (username, password, name, role, status, note, now)
         )
-        new_id = cur.lastrowid
-        conn.execute("COMMIT")
-        return jsonify({'success': True, 'message': 'Them nhan vien thanh cong', 'id': new_id}), 201
-    except sqlite3.IntegrityError:
-        _rollback(conn)
-        return jsonify({'success': False, 'message': 'Tai khoan da ton tai trong he thong.'}), 400
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Them nhan vien thanh cong', 'id': cur.lastrowid}), 201
     except Exception:
         _rollback(conn)
-        logger.exception("add_employee error")
+        logger.exception('add_employee error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -275,14 +270,11 @@ def update_employee(emp_id):
         return jsonify({'success': False, 'message': f'Status khong hop le. Chi chap nhan: {", ".join(VALID_STATUSES)}.'}), 400
 
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN IMMEDIATE")
-
-        current = conn.execute(
-            "SELECT role, status FROM employees WHERE id=?", (emp_id,)
-        ).fetchone()
+        cur.execute("SELECT role, status FROM users WHERE id = %s", (emp_id,))
+        current = cur.fetchone()
         if not current:
-            _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong tim thay nhan vien.'}), 404
 
         role   = new_role   if new_role   is not None else current['role']
@@ -295,32 +287,30 @@ def update_employee(emp_id):
 
         if is_demotion or is_deactivate:
             if emp_id == session.get('user_id'):
-                _rollback(conn)
                 return jsonify({'success': False, 'message': 'Khong the tu thay doi quyen cua chinh minh.'}), 400
             if _count_active_admins(conn) <= 1:
-                _rollback(conn)
                 return jsonify({'success': False, 'message': 'Khong the ha quyen hoac vo hieu hoa admin cuoi cung.'}), 400
 
+        cur.execute("SELECT id FROM users WHERE username = %s AND id <> %s", (username, emp_id))
+        if cur.fetchone():
+            return jsonify({'success': False, 'message': 'Tai khoan (username) nay da bi trung lap.'}), 400
+
         if password:
-            hashed = generate_password_hash(password)
-            conn.execute(
-                "UPDATE employees SET name=?, username=?, password=?, role=?, status=?, note=? WHERE id=?",
-                (name, username, hashed, role, status, note, emp_id)
+            cur.execute(
+                "UPDATE users SET username=%s, password=%s, first_name=%s, role=%s, status=%s, note=%s WHERE id=%s",
+                (username, password, name, role, status, note, emp_id)
             )
         else:
-            conn.execute(
-                "UPDATE employees SET name=?, username=?, role=?, status=?, note=? WHERE id=?",
-                (name, username, role, status, note, emp_id)
+            cur.execute(
+                "UPDATE users SET username=%s, first_name=%s, role=%s, status=%s, note=%s WHERE id=%s",
+                (username, name, role, status, note, emp_id)
             )
-        conn.execute("COMMIT")
+        conn.commit()
         return jsonify({'success': True, 'message': 'Cap nhat thanh cong'}), 200
 
-    except sqlite3.IntegrityError:
-        _rollback(conn)
-        return jsonify({'success': False, 'message': 'Tai khoan (username) nay da bi trung lap.'}), 400
     except Exception:
         _rollback(conn)
-        logger.exception("update_employee error")
+        logger.exception('update_employee error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -331,29 +321,24 @@ def update_employee(emp_id):
 @require_admin
 def delete_employee(emp_id):
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN IMMEDIATE")
-
-        emp = conn.execute(
-            "SELECT id, role, status FROM employees WHERE id=?", (emp_id,)
-        ).fetchone()
+        cur.execute("SELECT id, role, status FROM users WHERE id = %s", (emp_id,))
+        emp = cur.fetchone()
         if not emp:
-            _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong tim thay nhan vien.'}), 404
         if emp_id == session.get('user_id'):
-            _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong the xoa tai khoan cua chinh minh.'}), 400
         if emp['role'] == ROLE_ADMIN and emp['status'] == STATUS_ACTIVE and _count_active_admins(conn) <= 1:
-            _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong the xoa admin cuoi cung.'}), 400
 
-        conn.execute("DELETE FROM employees WHERE id=?", (emp_id,))
-        conn.execute("COMMIT")
+        cur.execute("DELETE FROM users WHERE id = %s", (emp_id,))
+        conn.commit()
         return jsonify({'success': True, 'message': 'Da xoa nhan vien'}), 200
 
     except Exception:
         _rollback(conn)
-        logger.exception("delete_employee error")
+        logger.exception('delete_employee error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -369,16 +354,19 @@ def get_shifts(emp_id):
     offset         = (page - 1) * per_page
 
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        if not conn.execute("SELECT id FROM employees WHERE id=?", (emp_id,)).fetchone():
+        cur.execute("SELECT id FROM users WHERE id = %s", (emp_id,))
+        if not cur.fetchone():
             return jsonify({'success': False, 'message': 'Khong tim thay nhan vien.'}), 404
 
-        rows = conn.execute(
+        cur.execute(
             "SELECT id, shift_name, work_date, start_time, end_time, note, created_at "
-            "FROM work_shifts WHERE employee_id=? "
-            "ORDER BY work_date, start_time LIMIT ? OFFSET ?",
+            "FROM work_shifts WHERE employee_id = %s "
+            "ORDER BY work_date, start_time LIMIT %s OFFSET %s",
             (emp_id, per_page, offset)
-        ).fetchall()
+        )
+        rows = cur.fetchall()
         return jsonify({
             'success': True,
             'data': [dict(r) for r in rows],
@@ -386,7 +374,7 @@ def get_shifts(emp_id):
             'per_page': per_page,
         }), 200
     except Exception:
-        logger.exception("get_shifts error")
+        logger.exception('get_shifts error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -410,23 +398,25 @@ def assign_shift(emp_id):
     now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN")
-        if not conn.execute("SELECT id FROM employees WHERE id=?", (emp_id,)).fetchone():
+        conn.begin()
+        cur.execute("SELECT id FROM users WHERE id = %s", (emp_id,))
+        if not cur.fetchone():
             _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong tim thay nhan vien.'}), 404
 
-        cur = conn.execute(
+        cur.execute(
             "INSERT INTO work_shifts (employee_id, shift_name, work_date, start_time, end_time, note, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (emp_id, shift_name, work_date, start_time, end_time, note, now)
         )
         new_id = cur.lastrowid
-        conn.execute("COMMIT")
+        conn.commit()
         return jsonify({'success': True, 'message': 'Phan cong ca truc thanh cong', 'id': new_id}), 201
     except Exception:
         _rollback(conn)
-        logger.exception("assign_shift error")
+        logger.exception('assign_shift error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -448,23 +438,23 @@ def update_shift(emp_id, shift_id):
         return jsonify({'success': False, 'message': err}), 400
 
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN")
-        if not conn.execute(
-            "SELECT id FROM work_shifts WHERE id=? AND employee_id=?", (shift_id, emp_id)
-        ).fetchone():
+        conn.begin()
+        cur.execute("SELECT id FROM work_shifts WHERE id = %s AND employee_id = %s", (shift_id, emp_id))
+        if not cur.fetchone():
             _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong tim thay ca truc nay.'}), 404
 
-        conn.execute(
-            "UPDATE work_shifts SET shift_name=?, work_date=?, start_time=?, end_time=?, note=? WHERE id=?",
+        cur.execute(
+            "UPDATE work_shifts SET shift_name=%s, work_date=%s, start_time=%s, end_time=%s, note=%s WHERE id=%s",
             (shift_name, work_date, start_time, end_time, note, shift_id)
         )
-        conn.execute("COMMIT")
+        conn.commit()
         return jsonify({'success': True, 'message': 'Cap nhat ca truc thanh cong'}), 200
     except Exception:
         _rollback(conn)
-        logger.exception("update_shift error")
+        logger.exception('update_shift error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()
@@ -475,20 +465,20 @@ def update_shift(emp_id, shift_id):
 @require_admin
 def delete_shift(emp_id, shift_id):
     conn = _get_conn()
+    cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
-        conn.execute("BEGIN")
-        if not conn.execute(
-            "SELECT id FROM work_shifts WHERE id=? AND employee_id=?", (shift_id, emp_id)
-        ).fetchone():
+        conn.begin()
+        cur.execute("SELECT id FROM work_shifts WHERE id = %s AND employee_id = %s", (shift_id, emp_id))
+        if not cur.fetchone():
             _rollback(conn)
             return jsonify({'success': False, 'message': 'Khong tim thay ca truc nay.'}), 404
 
-        conn.execute("DELETE FROM work_shifts WHERE id=?", (shift_id,))
-        conn.execute("COMMIT")
+        cur.execute("DELETE FROM work_shifts WHERE id = %s", (shift_id,))
+        conn.commit()
         return jsonify({'success': True, 'message': 'Da xoa ca truc'}), 200
     except Exception:
         _rollback(conn)
-        logger.exception("delete_shift error")
+        logger.exception('delete_shift error')
         return jsonify({'success': False, 'message': 'Loi he thong.'}), 500
     finally:
         conn.close()

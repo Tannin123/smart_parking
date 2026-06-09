@@ -144,10 +144,11 @@ import db
 def parking_in():
     data = request.json
     plate = data.get('plate')
+    vehicle_type = data.get('vehicle_type', 'xe_may')
     if not plate:
         return jsonify({'success': False, 'error': 'Thiếu biển số.'}), 400
     
-    success, msg = db.check_in(plate)
+    success, msg = db.check_in(plate, vehicle_type)
     return jsonify({'success': success, 'message': msg})
 
 # ── POST /api/parking/out ─────────────────────────────────────────────────────

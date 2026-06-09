@@ -8,6 +8,9 @@ import config
 
 from routers.vehicle import detect_bp
 from routers.webcam import webcam_bp
+from routers.auth import auth_bp, login_required, admin_required
+from routers.employee import employee_bp
+from routers.pricing import pricing_bp, init_pricing_tables
 
 import db
 
@@ -16,20 +19,14 @@ app.secret_key = config.SECRET_KEY
 
 # Khởi tạo DB
 db.init_db()
+init_pricing_tables()
 
 # ── Đăng ký Blueprints ───────────────────────────────────────────────────
 app.register_blueprint(detect_bp)
 app.register_blueprint(webcam_bp)
-
-
-# ── Middleware kiểm tra đăng nhập ────────────────────────────────────────
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+app.register_blueprint(auth_bp)
+app.register_blueprint(employee_bp)
+app.register_blueprint(pricing_bp)
 
 
 # ── Page routes ──────────────────────────────────────────────────────────
@@ -37,14 +34,8 @@ def login_required(f):
 def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
-    return redirect(url_for('login'))
+    return redirect(url_for('auth.login_page'))
 
-@app.route('/login')
-@app.route('/login.html')
-def login():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
-    return render_template('login.html')
 
 @app.route('/Dashboard.html')
 @app.route('/dashboard')
@@ -70,11 +61,13 @@ def employee():
 def pricing():
     return render_template('pricing.html')
 
+@app.route('/changepass.html')
+@app.route('/changepass')
 @app.route('/changepassword.html')
 @app.route('/changepassword')
 @login_required
-def changepassword():
-    return render_template('changepassword.html')
+def changepass():
+    return render_template('changepass.html')
 
 @app.route('/report.html')
 @app.route('/report')
@@ -87,43 +80,6 @@ def report():
 @login_required
 def support():
     return render_template('support.html')
-
-
-# ── API Routes (Auth) ────────────────────────────────────────────────────
-@app.route('/api/login', methods=['POST'])
-def api_login():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
-    success, user = db.verify_login(username, password)
-    if success:
-        session['user_id'] = user['id']
-        session['username'] = user['username']
-        session['role'] = user['role']
-        return jsonify({'success': True, 'message': 'Đăng nhập thành công'})
-    return jsonify({'success': False, 'message': 'Tài khoản hoặc mật khẩu không đúng'})
-
-@app.route('/api/logout', methods=['GET', 'POST'])
-def api_logout():
-    session.clear()
-    return jsonify({'success': True})
-
-@app.route('/api/change_password', methods=['POST'])
-@login_required
-def api_change_password():
-    data = request.json
-    old_pwd = data.get('old_password')
-    new_pwd = data.get('new_password')
-    success, msg = db.change_password(session['user_id'], old_pwd, new_pwd)
-    return jsonify({'success': success, 'message': msg})
-
-
-@app.route('/logout')
-@login_required
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
 
 # ── API Routes (Users) ───────────────────────────────────────────────────
 @app.route('/api/users', methods=['GET'])
@@ -152,29 +108,7 @@ def api_delete_user(user_id):
 
 
 # ── API Routes (Pricing) ─────────────────────────────────────────────────
-@app.route('/api/pricing', methods=['GET'])
-@login_required
-def api_get_pricing():
-    pricing = db.get_pricing()
-    return jsonify({'success': True, 'data': pricing})
-
-@app.route('/api/pricing', methods=['POST'])
-@login_required
-def api_add_pricing():
-    success = db.add_pricing(request.json)
-    return jsonify({'success': success})
-
-@app.route('/api/pricing/<int:pricing_id>', methods=['PUT'])
-@login_required
-def api_update_pricing(pricing_id):
-    success = db.update_pricing(pricing_id, request.json)
-    return jsonify({'success': success})
-
-@app.route('/api/pricing/<int:pricing_id>', methods=['DELETE'])
-@login_required
-def api_delete_pricing(pricing_id):
-    success = db.delete_pricing(pricing_id)
-    return jsonify({'success': success})
+# Được xử lý bởi pricing_bp trong routers/pricing.py
 
 
 # ── API Routes (Report) ──────────────────────────────────────────────────
