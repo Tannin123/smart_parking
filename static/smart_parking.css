@@ -1180,6 +1180,7 @@ body.nd-page { overflow: hidden; }
 }
 .warning-text.ok { color: #00b050; }
 .warning-text.info { color: #005a9e; }
+.warning-text.warn { color: #e65c00; }
 
 /* Source selector */
 .source-selector {
@@ -1444,7 +1445,7 @@ body.nd-page { overflow: hidden; }
     top: 8px;
     right: 10px;
     background: rgba(0,0,0,0.6);
-    color: #00b050;
+    color: #215A88;
     font-size: 10px;
     padding: 2px 8px;
     font-family: Arial, sans-serif;
@@ -1458,7 +1459,7 @@ body.nd-page { overflow: hidden; }
 .cam-live.show { display: flex; }
 .live-dot {
     width: 7px; height: 7px;
-    background: #00b050;
+    background:#215A88;
     border-radius: 50%;
     animation: blink 1s infinite;
 }
@@ -1569,4 +1570,34 @@ body.nd-page { overflow: hidden; }
     background-color: #215A88;
     color: #ffffff;
     border-color: #1a4a72;
+}
+
+/* ── Thumbnail ảnh xe vào / ra trong bảng lịch sử ──────────────────────── */
+.photo-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 3px 6px;
+}
+
+.thumb-photo {
+    width: 56px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #b0bec5;
+    cursor: pointer;
+    transition: transform 0.18s, box-shadow 0.18s;
+    display: block;
+    margin: 0 auto;
+}
+
+.thumb-photo:hover {
+    transform: scale(1.12);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    border-color: #215A88;
+}
+
+.thumb-empty {
+    color: #bbb;
+    font-size: 14px;
 }

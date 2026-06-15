@@ -791,11 +791,41 @@ function updatePlate(plate) {
     lastDetectedPlate = plate || '';
     const plateEl = document.getElementById('plateDetected');
     if (plateEl) plateEl.textContent = plate || '— — — —';
-    const hasPlate = !!plate;
+    const hasPlate = !!plate && plate !== 'UNKNOWN';
     const btnIn = document.getElementById('btnIn');
     const btnOut = document.getElementById('btnOut');
     if (btnIn) btnIn.disabled = !hasPlate;
     if (btnOut) btnOut.disabled = !hasPlate;
+}
+
+/**
+ * Chụp ảnh hiện tại từ nguồn đang sử dụng:
+ *   - webcam: vẽ frame từ <img id="webcamStream"> vào canvas
+ *   - image : lấy ảnh preview đã upload (<img id="previewImg"> hoặc annotatedImg)
+ * Trả về chuỗi base64 JPEG (kèm header data:image/jpeg;base64,...)
+ * hoặc null nếu không lấy được.
+ */
+function _captureCurrentPhoto() {
+    try {
+        let srcEl = null;
+        if (curSrc === 'webcam') {
+            srcEl = document.getElementById('webcamStream');
+        } else {
+            // Ưu tiên ảnh annotated (sau khi detect), sau đó preview gốc
+            const ann = document.getElementById('annotatedImg');
+            srcEl = (ann && ann.style.display !== 'none') ? ann : document.getElementById('previewImg');
+        }
+        if (!srcEl || !srcEl.src || srcEl.naturalWidth === 0) return null;
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = srcEl.naturalWidth  || srcEl.width  || 640;
+        canvas.height = srcEl.naturalHeight || srcEl.height || 480;
+        canvas.getContext('2d').drawImage(srcEl, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.82);
+    } catch (err) {
+        console.warn('[Photo] Không chụp được ảnh:', err);
+        return null;
+    }
 }
 
 function setSource(t) {
@@ -930,6 +960,10 @@ async function doScanWebcam() {
             const plate = data.plates[0].text;
             updatePlate(plate);
             setAlert('WEBCAM NHẬN DIỆN: ' + plate, 'ok');
+        } else if (data.success && data.obscured) {
+            // Phát hiện vùng biển nhưng không đọc được → hiện UNKNOWN
+            updatePlate('UNKNOWN');
+            setAlert('ĐÃ NHẬN DIỆN: UNKNOWN', 'warn');
         } else {
             setAlert('CHƯA PHÁT HIỆN BIỂN SỐ – GIỮ BIỂN SỐ TRƯỚC CAMERA', 'info');
         }
@@ -960,6 +994,10 @@ async function _pollWebcam() {
             const plate = data.plates[0].text;
             updatePlate(plate);
             setAlert('WEBCAM PHÁT HIỆN: ' + plate, 'ok');
+        } else if (data.obscured) {
+            // Phát hiện vùng biển nhưng không đọc được → hiện UNKNOWN
+            updatePlate('UNKNOWN');
+            setAlert('ĐÃ NHẬN DIỆN: UNKNOWN', 'warn');
         }
     } catch { }
 }
@@ -968,10 +1006,11 @@ async function doCheckIn() {
     const plate = lastDetectedPlate;
     if (!plate) return;
     try {
+        const photo = _captureCurrentPhoto();
         const res = await fetch('/api/parking/in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plate, vehicle_type: currentVehicleType() })
+            body: JSON.stringify({ plate, vehicle_type: currentVehicleType(), photo })
         });
         const data = await res.json();
         if (data.success) {
@@ -1003,10 +1042,11 @@ async function doCheckOut() {
     const plate = lastDetectedPlate;
     if (!plate) return;
     try {
+        const photo = _captureCurrentPhoto();
         const res = await fetch('/api/parking/out', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plate })
+            body: JSON.stringify({ plate, photo })
         });
         const data = await res.json();
         if (data.success) {
@@ -1062,11 +1102,16 @@ async function loadRecentHistory() {
         if (data.success && data.logs && data.logs.length) {
             tb.innerHTML = data.logs.map(log => {
                 const isIn = log.status === 'IN';
+                // Thumbnail ảnh vào/ra
+                const photoIn  = log.photo_in  ? `<img src="/${log.photo_in}"  class="thumb-photo" onclick="_openPhoto('/${log.photo_in}')"  title="Ảnh xe vào">` : '<span class="thumb-empty">—</span>';
+                const photoOut = log.photo_out ? `<img src="/${log.photo_out}" class="thumb-photo" onclick="_openPhoto('/${log.photo_out}')" title="Ảnh xe ra">` : '<span class="thumb-empty">—</span>';
                 return `<tr>
           <td class="plate-cell">${log.plate}</td>
           <td>${fmtDateTime(log.time_in)}</td>
           <td>${fmtDateTime(log.time_out)}</td>
           <td><span class="${isIn ? 'tag-vao' : 'tag-ra'}">${isIn ? '↓ Trong bãi' : '↑ Đã ra'}</span></td>
+          <td class="photo-cell">${photoIn}</td>
+          <td class="photo-cell">${photoOut}</td>
         </tr>`;
             }).join('');
 
@@ -1080,11 +1125,16 @@ async function loadRecentHistory() {
             if (infoOut) infoOut.textContent = fmtDateTime(latest.time_out);
             if (infoStatus) infoStatus.textContent = latest.status === 'IN' ? '✓ TRONG BÃI' : '↩ ĐÃ RA';
         } else {
-            tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Chưa có dữ liệu</td></tr>';
+            tb.innerHTML = '<tr><td class="empty-cell" colspan="6">Chưa có dữ liệu</td></tr>';
         }
     } catch {
-        tb.innerHTML = '<tr><td class="empty-cell" colspan="4">Lỗi tải dữ liệu</td></tr>';
+        tb.innerHTML = '<tr><td class="empty-cell" colspan="6">Lỗi tải dữ liệu</td></tr>';
     }
+}
+
+/** Mở ảnh to trong tab mới khi click thumbnail */
+function _openPhoto(url) {
+    window.open(url, '_blank');
 }
 
 document.addEventListener('DOMContentLoaded', () => {

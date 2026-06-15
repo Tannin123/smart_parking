@@ -7,6 +7,7 @@ import os
 import uuid
 import base64
 import logging
+import datetime
 
 import cv2
 from flask import Blueprint, request, jsonify
@@ -27,6 +28,30 @@ def _allowed_file(filename: str, allowed: set) -> bool:
 def _unique_filename(original: str) -> str:
     ext = original.rsplit('.', 1)[1].lower()
     return f"{uuid.uuid4().hex}.{ext}"
+
+
+def _save_photo_base64(b64_str: str, prefix: str) -> str | None:
+    """
+    Nhận chuỗi base64 (đã bỏ header data:image/...;base64, hoặc chưa),
+    giải mã và lưu thành file JPG trong PHOTO_FOLDER.
+    Trả về đường dẫn tương đối static/photos/<filename> hoặc None nếu lỗi.
+    """
+    if not b64_str:
+        return None
+    try:
+        # Bỏ header nếu có: "data:image/jpeg;base64,XXXXX"
+        if ',' in b64_str:
+            b64_str = b64_str.split(',', 1)[1]
+        img_bytes = base64.b64decode(b64_str)
+        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{prefix}_{ts}_{uuid.uuid4().hex[:6]}.jpg"
+        filepath = os.path.join(config.PHOTO_FOLDER, filename)
+        with open(filepath, 'wb') as f:
+            f.write(img_bytes)
+        return f"static/photos/{filename}"
+    except Exception as e:
+        logging.error(f"[Vehicle] Lưu ảnh chụp xe thất bại: {e}")
+        return None
 
 
 # ── POST /api/detect/image ────────────────────────────────────────────────────
@@ -147,8 +172,17 @@ def parking_in():
     vehicle_type = data.get('vehicle_type', 'xe_may')
     if not plate:
         return jsonify({'success': False, 'error': 'Thiếu biển số.'}), 400
-    
-    success, msg = db.check_in(plate, vehicle_type)
+
+    if plate.strip().upper() == 'UNKNOWN':
+        return jsonify({
+            'success': False,
+            'error': 'Không thể đọc biển số xe. Vui lòng chụp lại hoặc nhập thủ công.'
+        }), 400
+
+    # Lưu ảnh chụp xe vào (nếu có)
+    photo_path = _save_photo_base64(data.get('photo'), prefix='in')
+
+    success, msg = db.check_in(plate, vehicle_type, photo_path)
     return jsonify({'success': success, 'message': msg})
 
 # ── POST /api/parking/out ─────────────────────────────────────────────────────
@@ -159,8 +193,11 @@ def parking_out():
     plate = data.get('plate')
     if not plate:
         return jsonify({'success': False, 'error': 'Thiếu biển số.'}), 400
-    
-    success, msg, fee = db.check_out(plate)
+
+    # Lưu ảnh chụp xe ra (nếu có)
+    photo_path = _save_photo_base64(data.get('photo'), prefix='out')
+
+    success, msg, fee = db.check_out(plate, photo_path)
     return jsonify({'success': success, 'message': msg, 'fee': fee})
 
 # ── GET /api/parking/history ──────────────────────────────────────────────────
@@ -170,3 +207,58 @@ def parking_history():
     logs = db.get_recent_logs(limit=20)
     return jsonify({'success': True, 'logs': logs})
 
+
+# ── POST /api/parking/in-obscured ────────────────────────────────────────────
+# Dùng khi YOLO phát hiện xe nhưng OCR không đọc được biển số
+
+@detect_bp.route('/api/parking/in-obscured', methods=['POST'])
+def parking_in_obscured():
+    """
+    Ghi nhận xe vào bãi khi biển số bị che khuất.
+    Body JSON (tùy chọn):
+      vehicle_type : str  – loại xe (mặc định 'xe_may')
+    Trả về ID tạm để nhân viên dùng cho xe ra.
+    """
+    data         = request.json or {}
+    vehicle_type = data.get('vehicle_type', 'xe_may')
+
+    success, msg, temp_id = db.check_in_obscured(vehicle_type=vehicle_type)
+    if success:
+        logging.warning(f"[Vehicle] Xe vào với biển bị che — ID tạm: {temp_id}")
+        return jsonify({'success': True, 'message': msg, 'temp_id': temp_id}), 201
+    return jsonify({'success': False, 'error': msg}), 500
+
+
+# ── POST /api/parking/out-obscured ───────────────────────────────────────────
+
+@detect_bp.route('/api/parking/out-obscured', methods=['POST'])
+def parking_out_obscured():
+    """
+    Cho xe có biển bị che ra khỏi bãi, tính phí theo giờ.
+    Body JSON:
+      temp_id : str  – ID tạm nhận được lúc vào (dạng OBSCURED_XXXXXXXX)
+    """
+    data    = request.json or {}
+    temp_id = (data.get('temp_id') or '').strip()
+
+    if not temp_id:
+        return jsonify({'success': False, 'error': 'Thiếu temp_id.'}), 400
+    if not temp_id.startswith('OBSCURED_'):
+        return jsonify({'success': False, 'error': 'temp_id không hợp lệ.'}), 400
+
+    success, msg, fee = db.check_out_obscured(temp_id)
+    if success:
+        return jsonify({'success': True, 'message': msg, 'fee': fee})
+    return jsonify({'success': False, 'error': msg}), 404
+
+
+# ── GET /api/parking/obscured ─────────────────────────────────────────────────
+
+@detect_bp.route('/api/parking/obscured', methods=['GET'])
+def parking_obscured_list():
+    """
+    Trả về danh sách các xe vào bãi có biển số bị che khuất.
+    Dùng để nhân viên theo dõi và xử lý thủ công.
+    """
+    logs = db.get_obscured_logs(limit=50)
+    return jsonify({'success': True, 'logs': logs})

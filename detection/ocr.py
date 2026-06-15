@@ -1,6 +1,13 @@
 import easyocr
 import cv2
 import numpy as np
+import re
+
+# Pattern biển số VN hợp lệ: 51F-1234 / 29D1-12345 / 30H1-123.45
+_VN_PLATE_RE = re.compile(
+    r'^\d{2}[A-Z]{1,2}\d?[-\s]?\d{3,5}$',
+    re.IGNORECASE
+)
 
 # Khởi tạo mô hình EasyOCR
 print("[INFO] Đang khởi tạo bộ đọc chữ EasyOCR...")
@@ -72,5 +79,21 @@ def read_plate_text(img) -> str:
         clean_text = ''.join(e for e in text if e.isalnum())
         raw_plate_text += clean_text
     
-    # --- 3. ÁP DỤNG QUY TẮC VN ---
-    return format_vn_plate(raw_plate_text)
+    # --- 3. KIỂM TRA ĐỦ KÝ TỰ ---
+    # Biển số VN hợp lệ tối thiểu 5 ký tự alnum (vd: 51F12 trở lên)
+    # Nếu OCR đọc được ít hơn → biển bị che hoặc OCR lỗi → UNKNOWN
+    MIN_PLATE_CHARS = 5
+    if len(raw_plate_text) < MIN_PLATE_CHARS:
+        return "UNKNOWN"
+
+    # --- 4. ÁP DỤNG QUY TẮC VN ---
+    formatted = format_vn_plate(raw_plate_text)
+
+    # --- 5. KIỂM TRA FORMAT BIỂN SỐ VN HỢP LỆ ---
+    # Bỏ khoảng trắng và dấu '-' để so sánh với regex
+    check_str = formatted.replace(' ', '').replace('-', '')
+    if not _VN_PLATE_RE.match(check_str):
+        # Không khớp format biển VN → OCR đọc nhảm (bị che / nhiễu)
+        return "UNKNOWN"
+
+    return formatted

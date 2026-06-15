@@ -8,9 +8,11 @@ DEBUG      = True
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 RESULT_FOLDER = os.path.join(BASE_DIR, 'static', 'results')
+PHOTO_FOLDER  = os.path.join(BASE_DIR, 'static', 'photos')   # ảnh chụp xe vào/ra
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
+os.makedirs(PHOTO_FOLDER,  exist_ok=True)
 
 ALLOWED_IMAGE_EXT = {'jpg', 'jpeg', 'png', 'bmp', 'webp'}
 ALLOWED_VIDEO_EXT = {'mp4', 'avi', 'mov', 'mkv'}

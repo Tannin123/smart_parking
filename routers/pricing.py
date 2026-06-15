@@ -489,4 +489,3 @@ def calculate_fee():
         'time_out':         time_out.strftime('%Y-%m-%d %H:%M:%S'),
     }), 200
 
-
