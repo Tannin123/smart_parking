@@ -28,8 +28,6 @@ def _allowed_file(filename: str, allowed: set) -> bool:
 def _unique_filename(original: str) -> str:
     ext = original.rsplit('.', 1)[1].lower()
     return f"{uuid.uuid4().hex}.{ext}"
-
-
 def _save_photo_base64(b64_str: str, prefix: str) -> str | None:
     """
     Nhận chuỗi base64 (đã bỏ header data:image/...;base64, hoặc chưa),
@@ -39,7 +37,6 @@ def _save_photo_base64(b64_str: str, prefix: str) -> str | None:
     if not b64_str:
         return None
     try:
-        # Bỏ header nếu có: "data:image/jpeg;base64,XXXXX"
         if ',' in b64_str:
             b64_str = b64_str.split(',', 1)[1]
         img_bytes = base64.b64decode(b64_str)
@@ -52,6 +49,8 @@ def _save_photo_base64(b64_str: str, prefix: str) -> str | None:
     except Exception as e:
         logging.error(f"[Vehicle] Lưu ảnh chụp xe thất bại: {e}")
         return None
+
+
 
 
 # ── POST /api/detect/image ────────────────────────────────────────────────────

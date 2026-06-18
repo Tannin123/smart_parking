@@ -70,7 +70,6 @@ def init_pricing_tables():
                 label          VARCHAR(100) NOT NULL DEFAULT '',
                 price_per_turn INT          NOT NULL DEFAULT 0,
                 price_per_hour INT          NOT NULL DEFAULT 0,
-                free_minutes   INT          NOT NULL DEFAULT 0,
                 time_open      VARCHAR(5)   NOT NULL DEFAULT '06:00',
                 time_close     VARCHAR(5)   NOT NULL DEFAULT '22:00',
                 note           TEXT         NULL,
@@ -89,8 +88,7 @@ def init_pricing_tables():
             'label':          "ALTER TABLE pricing ADD COLUMN label          VARCHAR(100) NOT NULL DEFAULT ''      AFTER vehicle_type",
             'price_per_turn': "ALTER TABLE pricing ADD COLUMN price_per_turn INT          NOT NULL DEFAULT 0       AFTER label",
             'price_per_hour': "ALTER TABLE pricing ADD COLUMN price_per_hour INT          NOT NULL DEFAULT 0       AFTER price_per_turn",
-            'free_minutes':   "ALTER TABLE pricing ADD COLUMN free_minutes   INT          NOT NULL DEFAULT 0       AFTER price_per_hour",
-            'time_open':      "ALTER TABLE pricing ADD COLUMN time_open      VARCHAR(5)   NOT NULL DEFAULT '06:00' AFTER free_minutes",
+            'time_open':      "ALTER TABLE pricing ADD COLUMN time_open      VARCHAR(5)   NOT NULL DEFAULT '06:00' AFTER price_per_hour",
             'time_close':     "ALTER TABLE pricing ADD COLUMN time_close     VARCHAR(5)   NOT NULL DEFAULT '22:00' AFTER time_open",
             'note':           "ALTER TABLE pricing ADD COLUMN note           TEXT         NULL                     AFTER time_close",
             'created_at':     "ALTER TABLE pricing ADD COLUMN created_at     DATETIME     NULL                     AFTER note",
@@ -118,9 +116,9 @@ def init_pricing_tables():
         ]
         cur.executemany(
             "INSERT IGNORE INTO pricing "
-            "(vehicle_type, label, price_per_turn, price_per_hour, free_minutes, "
+            "(vehicle_type, label, price_per_turn, price_per_hour, "
             " time_open, time_close, note, created_at, updated_at) "
-            "VALUES (%s, %s, 0, %s, 0, %s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, 0, %s, %s, %s, %s, %s, %s)",
             [(vt, lb, pph, to_, tc, note, now, now)
              for vt, lb, pph, to_, tc, note in defaults]
         )
@@ -151,7 +149,6 @@ def _validate_pricing_input(data):
     label          = (data.get('label') or '').strip()
     price_per_turn = data.get('price_per_turn')
     price_per_hour = data.get('price_per_hour')
-    free_minutes   = data.get('free_minutes', 0)
     time_open      = data.get('time_open', '00:00')
     time_close     = data.get('time_close', '23:59')
 
@@ -169,11 +166,6 @@ def _validate_pricing_input(data):
             return 'Gia theo gio phai >= 0.'
     except (TypeError, ValueError):
         return 'Gia theo gio phai la so nguyen.'
-    try:
-        if int(free_minutes) < 0:
-            return 'So phut mien phi phai >= 0.'
-    except (TypeError, ValueError):
-        return 'So phut mien phi phai la so nguyen.'
     if not _validate_time(time_open):
         return 'Gio mo cua khong hop le (dinh dang HH:MM).'
     if not _validate_time(time_close):
@@ -292,15 +284,14 @@ def add_pricing():
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO pricing "
-            "(vehicle_type, label, price_per_turn, price_per_hour, free_minutes, "
+            "(vehicle_type, label, price_per_turn, price_per_hour, "
             " time_open, time_close, note, created_at, updated_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data['vehicle_type'].strip(),
                 data['label'].strip(),
                 int(data['price_per_turn']),
                 int(data['price_per_hour']),
-                int(data.get('free_minutes', 0)),
                 data.get('time_open', '00:00'),
                 data.get('time_close', '23:59'),
                 (data.get('note') or '').strip(),
@@ -340,14 +331,13 @@ def update_pricing(pricing_id):
         cur.execute(
             "UPDATE pricing SET "
             "vehicle_type=%s, label=%s, price_per_turn=%s, price_per_hour=%s, "
-            "free_minutes=%s, time_open=%s, time_close=%s, note=%s, updated_at=%s "
+            "time_open=%s, time_close=%s, note=%s, updated_at=%s "
             "WHERE id=%s",
             (
                 data['vehicle_type'].strip(),
                 data['label'].strip(),
                 int(data['price_per_turn']),
                 int(data['price_per_hour']),
-                int(data.get('free_minutes', 0)),
                 data.get('time_open', '00:00'),
                 data.get('time_close', '23:59'),
                 (data.get('note') or '').strip(),
@@ -460,25 +450,21 @@ def calculate_fee():
 
     price_per_turn = row['price_per_turn']
     price_per_hour = row['price_per_hour']
-    free_minutes   = row['free_minutes']
     label          = row['label']
 
     duration_minutes = int((time_out - time_in).total_seconds() / 60)
-    billable_minutes = max(0, duration_minutes - free_minutes)
 
     if mode == CALC_MODE_TURN:
         fee          = price_per_turn
         hours_billed = None
     else:
-        hours_billed = math.ceil(billable_minutes / 60) if billable_minutes > 0 else 0
+        hours_billed = math.ceil(duration_minutes / 60) if duration_minutes > 0 else 0
         fee          = hours_billed * price_per_hour
 
     return jsonify({
         'success':          True,
         'fee':              fee,
         'duration_minutes': duration_minutes,
-        'free_minutes':     free_minutes,
-        'billable_minutes': billable_minutes,
         'hours_billed':     hours_billed,
         'price_per_turn':   price_per_turn,
         'price_per_hour':   price_per_hour,

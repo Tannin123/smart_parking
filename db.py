@@ -108,7 +108,7 @@ def init_db():
     logging.info("[DB] Đã khởi tạo cấu trúc CSDL đầy đủ.")
 
 # === MODULE NHẬN DIỆN ===
-def check_in(plate: str, vehicle_type: str = 'xe_may') -> tuple[bool, str]:
+def check_in(plate: str, vehicle_type: str = 'xe_may', photo_path: str = None) -> tuple[bool, str]:
     conn = get_connection()
     if not conn: return False, "Lỗi kết nối CSDL!"
     cur = conn.cursor()
@@ -117,12 +117,20 @@ def check_in(plate: str, vehicle_type: str = 'xe_may') -> tuple[bool, str]:
         cur.execute("ALTER TABLE parking_logs ADD COLUMN vehicle_type VARCHAR(50) DEFAULT 'xe_may'")
     except:
         pass
+    # Migration: đảm bảo cột photo_in tồn tại
+    try:
+        cur.execute("ALTER TABLE parking_logs ADD COLUMN photo_in VARCHAR(255) DEFAULT NULL")
+    except:
+        pass
     cur.execute("SELECT id FROM parking_logs WHERE plate = %s AND status = 'IN'", (plate,))
     if cur.fetchone():
         conn.close()
         return False, "Xe đang ở trong bãi, chưa được cho ra!"
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur.execute("INSERT INTO parking_logs (plate, time_in, status, vehicle_type) VALUES (%s, %s, 'IN', %s)", (plate, now_str, vehicle_type))
+    cur.execute(
+        "INSERT INTO parking_logs (plate, time_in, status, vehicle_type, photo_in) VALUES (%s, %s, 'IN', %s, %s)",
+        (plate, now_str, vehicle_type, photo_path)
+    )
     conn.commit()
     conn.close()
     return True, "Cho xe vào thành công!"
@@ -243,12 +251,17 @@ def get_obscured_logs(limit: int = 20) -> list[dict]:
         res.append(r)
     return res
 
-def check_out(plate: str) -> tuple[bool, str, int]:
+def check_out(plate: str, photo_path: str = None) -> tuple[bool, str, int]:
     conn = get_connection()
     if not conn: return False, "Lỗi kết nối CSDL!", 0
     cur = conn.cursor(MySQLdb.cursors.DictCursor)
     try:
         cur.execute("ALTER TABLE parking_logs ADD COLUMN fee INT DEFAULT 0")
+    except:
+        pass
+    # Migration: đảm bảo cột photo_out tồn tại
+    try:
+        cur.execute("ALTER TABLE parking_logs ADD COLUMN photo_out VARCHAR(255) DEFAULT NULL")
     except:
         pass
     cur.execute("SELECT id, time_in, vehicle_type FROM parking_logs WHERE plate = %s AND status = 'IN' ORDER BY id DESC LIMIT 1", (plate,))
@@ -282,7 +295,10 @@ def check_out(plate: str) -> tuple[bool, str, int]:
 
     fee = hours_billed * price_per_hour
 
-    cur.execute("UPDATE parking_logs SET time_out = %s, status = 'OUT', fee = %s WHERE id = %s", (now_str, fee, log_id))
+    cur.execute(
+        "UPDATE parking_logs SET time_out = %s, status = 'OUT', fee = %s, photo_out = %s WHERE id = %s",
+        (now_str, fee, photo_path, log_id)
+    )
     conn.commit()
     conn.close()
     return True, "Cho xe ra thành công!", fee
@@ -499,14 +515,13 @@ def add_pricing(data):
         now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cur.execute(
             "INSERT INTO pricing (vehicle_type, label, price_per_turn, price_per_hour, "
-            "free_minutes, time_open, time_close, note, created_at, updated_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "time_open, time_close, note, created_at, updated_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 data.get('vehicle_type', ''),
                 data.get('label', data.get('type', '')),
                 data.get('price_per_turn', 0),
                 data.get('price_per_hour', data.get('price_turn', 0)),
-                data.get('free_minutes', 0),
                 data.get('time_open', data.get('time_in', '06:00')),
                 data.get('time_close', data.get('time_out', '22:00')),
                 data.get('note', ''),
@@ -530,13 +545,12 @@ def update_pricing(pricing_id, data):
         now = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cur.execute(
             "UPDATE pricing SET vehicle_type=%s, label=%s, price_per_turn=%s, price_per_hour=%s, "
-            "free_minutes=%s, time_open=%s, time_close=%s, note=%s, updated_at=%s WHERE id=%s",
+            "time_open=%s, time_close=%s, note=%s, updated_at=%s WHERE id=%s",
             (
                 data.get('vehicle_type', ''),
                 data.get('label', data.get('type', '')),
                 data.get('price_per_turn', 0),
                 data.get('price_per_hour', data.get('price_turn', 0)),
-                data.get('free_minutes', 0),
                 data.get('time_open', data.get('time_in', '06:00')),
                 data.get('time_close', data.get('time_out', '22:00')),
                 data.get('note', ''),
