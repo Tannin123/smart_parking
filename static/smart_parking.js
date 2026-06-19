@@ -344,20 +344,18 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderReportTable() {
         const tbody = document.getElementById('tableBody');
         if (!tbody) return;
-        let t = { doanhthu: 0, vao: 0, ra: 0 };
+        let t = { doanhthu: 0, ra: 0 };
         tbody.innerHTML = tableData.map(d => {
-            t.doanhthu += d.doanhthu; t.vao += d.vao; t.ra += d.ra;
+            t.doanhthu += d.doanhthu; t.ra += d.ra;
             return `<tr class="${d.highlight ? 'highlight' : ''}">
                 <td class="col-name">${d.name}</td>
                 <td>${fmtMoney(d.doanhthu)}</td>
-                <td>${fmtNum(d.vao)}</td>
                 <td>${fmtNum(d.ra)}</td>
             </tr>`;
         }).join('');
         tbody.innerHTML += `<tr class="total-row">
             <td class="col-name" style="color:#e74c3c">Tổng</td>
             <td style="color:#e91e8c;font-weight:700">${Number(t.doanhthu).toLocaleString('vi-VN')}đ</td>
-            <td style="color:#2980b9;font-weight:700">${t.vao}</td>
             <td style="color:#2980b9;font-weight:700">${t.ra}</td>
         </tr>`;
     }
@@ -414,6 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.fetchReportData();
 });
+
 
 /* ── NHẬN DIỆN PAGE: TAB SWITCHING ────────────────────── */
 function switchTab(name, btn) {
