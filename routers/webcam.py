@@ -28,6 +28,5 @@ def webcam_result():
     return jsonify({
         'success':  True,
         'plates':   [{'text': p} for p in result['plates']],
-        'timestamp': result['timestamp'],
-        'obscured': result.get('obscured', False),
+        'timestamp': result['timestamp']
     })

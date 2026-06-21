@@ -75,10 +75,6 @@ def init_db():
         pass
 
 
-
-    # 3. Bảng pricing — do pricing.py quản lý schema, db.py không tạo lại
-    #    (tránh xung đột cột cũ: type/price_turn vs. vehicle_type/price_per_hour)
-
     # Thêm tài khoản admin mặc định
     cur.execute("SELECT id FROM users WHERE username = 'admin'")
     if not cur.fetchone():
@@ -122,121 +118,7 @@ def check_in(plate: str, vehicle_type: str = 'xe_may', photo_path: str = None) -
     conn.close()
     return True, "Cho xe vào thành công!"
 
-def check_in_obscured(vehicle_type: str = 'xe_may', temp_id: str = None) -> tuple[bool, str, str]:
-    """
-    Ghi nhận xe vào bãi nhưng biển số bị che khuất.
-    Tạo ID tạm (OBSCURED_<uuid>) để theo dõi, lưu ảnh nếu có.
-    Trả về (success, message, temp_plate_id).
-    """
-    import uuid as _uuid
-    conn = get_connection()
-    if not conn:
-        return False, "Lỗi kết nối CSDL!", ""
-    cur = conn.cursor()
-    try:
-        cur.execute("ALTER TABLE parking_logs ADD COLUMN vehicle_type VARCHAR(50) DEFAULT 'xe_may'")
-    except:
-        pass
-    try:
-        cur.execute("ALTER TABLE parking_logs ADD COLUMN is_obscured TINYINT(1) DEFAULT 0")
-    except:
-        pass
 
-    # Tạo biển số tạm nếu không truyền vào
-    if not temp_id:
-        temp_id = f"OBSCURED_{_uuid.uuid4().hex[:8].upper()}"
-
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cur.execute(
-        "INSERT INTO parking_logs (plate, time_in, status, vehicle_type, is_obscured) "
-        "VALUES (%s, %s, 'IN', %s, 1)",
-        (temp_id, now_str, vehicle_type)
-    )
-    conn.commit()
-    conn.close()
-    logging.warning(f"[DB] Xe vào bãi với biển số bị che — ID tạm: {temp_id}")
-    return True, f"Đã ghi nhận xe vào (biển số bị che). ID tạm: {temp_id}", temp_id
-
-def check_out_obscured(temp_plate_id: str) -> tuple[bool, str, int]:
-    """
-    Cho xe có biển bị che ra khỏi bãi bằng ID tạm.
-    Tính phí theo giờ với giá xe_may mặc định.
-    """
-    conn = get_connection()
-    if not conn:
-        return False, "Lỗi kết nối CSDL!", 0
-    cur = conn.cursor(MySQLdb.cursors.DictCursor)
-    try:
-        cur.execute("ALTER TABLE parking_logs ADD COLUMN fee INT DEFAULT 0")
-    except:
-        pass
-
-    cur.execute(
-        "SELECT id, time_in, vehicle_type FROM parking_logs "
-        "WHERE plate = %s AND status = 'IN' ORDER BY id DESC LIMIT 1",
-        (temp_plate_id,)
-    )
-    row = cur.fetchone()
-    if not row:
-        conn.close()
-        return False, "Không tìm thấy bản ghi xe bị che này!", 0
-
-    log_id   = row['id']
-    time_in  = row['time_in']
-    vehicle_type = row.get('vehicle_type') or 'xe_may'
-    if isinstance(time_in, str):
-        time_in = datetime.datetime.strptime(time_in, "%Y-%m-%d %H:%M:%S")
-
-    import math
-    now = datetime.datetime.now()
-    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    duration_minutes = int((now - time_in).total_seconds() / 60)
-    hours_billed = math.ceil(duration_minutes / 60) if duration_minutes > 0 else 1
-
-    cur.execute(
-        "SELECT price_per_hour FROM pricing WHERE vehicle_type = %s ORDER BY id ASC LIMIT 1",
-        (vehicle_type,)
-    )
-    p_row = cur.fetchone()
-    if not p_row:
-        cur.execute("SELECT price_per_hour FROM pricing ORDER BY id ASC LIMIT 1")
-        p_row = cur.fetchone()
-    price_per_hour = p_row['price_per_hour'] if p_row else 5000
-    fee = hours_billed * price_per_hour
-
-    cur.execute(
-        "UPDATE parking_logs SET time_out = %s, status = 'OUT', fee = %s WHERE id = %s",
-        (now_str, fee, log_id)
-    )
-    conn.commit()
-    conn.close()
-    logging.info(f"[DB] Xe bị che biển ra bãi — ID tạm: {temp_plate_id}, phí: {fee}")
-    return True, f"Xe ra thành công. Phí: {fee:,}đ", fee
-
-def get_obscured_logs(limit: int = 20) -> list[dict]:
-    """Trả về danh sách các xe vào bãi có biển số bị che khuất."""
-    conn = get_connection()
-    if not conn:
-        return []
-    cur = conn.cursor(MySQLdb.cursors.DictCursor)
-    try:
-        cur.execute("ALTER TABLE parking_logs ADD COLUMN is_obscured TINYINT(1) DEFAULT 0")
-    except:
-        pass
-    cur.execute(
-        "SELECT * FROM parking_logs WHERE is_obscured = 1 ORDER BY id DESC LIMIT %s",
-        (limit,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    res = []
-    for row in rows:
-        r = dict(row)
-        for k, v in r.items():
-            if isinstance(v, datetime.datetime):
-                r[k] = v.strftime("%Y-%m-%d %H:%M:%S")
-        res.append(r)
-    return res
 
 def check_out(plate: str, photo_path: str = None) -> tuple[bool, str, int]:
     conn = get_connection()
@@ -591,4 +473,5 @@ def debug_check():
         print(dict(r))
 
     conn.close()
+
 
