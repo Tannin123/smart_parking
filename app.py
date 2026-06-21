@@ -65,7 +65,6 @@ def pricing():
 @app.route('/changepass')
 @app.route('/changepassword.html')
 @app.route('/changepassword')
-@login_required
 def changepass():
     return render_template('changepass.html')
 

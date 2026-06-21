@@ -74,20 +74,7 @@ def init_db():
     except:
         pass
 
-    # 2.5 Bảng work_shifts
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS work_shifts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            employee_id INT NOT NULL,
-            shift_name VARCHAR(100) NOT NULL,
-            work_date DATE NOT NULL,
-            start_time TIME NOT NULL,
-            end_time TIME NOT NULL,
-            note TEXT,
-            created_at DATETIME,
-            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    ''')
+
 
     # 3. Bảng pricing — do pricing.py quản lý schema, db.py không tạo lại
     #    (tránh xung đột cột cũ: type/price_turn vs. vehicle_type/price_per_hour)
@@ -430,71 +417,6 @@ def delete_user(user_id):
     finally:
         conn.close()
 
-def get_shifts(user_id, limit=20, offset=0):
-    conn = get_connection()
-    if not conn: return []
-    cur = conn.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT * FROM work_shifts WHERE employee_id=%s ORDER BY work_date, start_time LIMIT %s OFFSET %s", (user_id, limit, offset))
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-def get_shift_by_id(shift_id):
-    conn = get_connection()
-    if not conn: return None
-    cur = conn.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT * FROM work_shifts WHERE id=%s", (shift_id,))
-    row = cur.fetchone()
-    conn.close()
-    return dict(row) if row else None
-
-def add_shift(user_id, data):
-    conn = get_connection()
-    if not conn: return False
-    cur = conn.cursor()
-    try:
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cur.execute("""
-            INSERT INTO work_shifts (employee_id, shift_name, work_date, start_time, end_time, note, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (user_id, data.get('shift_name'), data.get('work_date'), data.get('start_time'), data.get('end_time'), data.get('note'), now_str))
-        new_id = cur.lastrowid
-        conn.commit()
-        return new_id
-    except Exception as e:
-        logging.error(f"Error adding shift: {e}")
-        return False
-    finally:
-        conn.close()
-
-def update_shift(shift_id, data):
-    conn = get_connection()
-    if not conn: return False
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            UPDATE work_shifts SET shift_name=%s, work_date=%s, start_time=%s, end_time=%s, note=%s WHERE id=%s
-        """, (data.get('shift_name'), data.get('work_date'), data.get('start_time'), data.get('end_time'), data.get('note'), shift_id))
-        conn.commit()
-        return True
-    except Exception as e:
-        logging.error(f"Error updating shift: {e}")
-        return False
-    finally:
-        conn.close()
-
-def delete_shift(shift_id):
-    conn = get_connection()
-    if not conn: return False
-    cur = conn.cursor()
-    try:
-        cur.execute("DELETE FROM work_shifts WHERE id=%s", (shift_id,))
-        conn.commit()
-        return True
-    except:
-        return False
-    finally:
-        conn.close()
 
 # === MODULE BẢNG GIÁ (PRICING) — dùng schema mới từ pricing.py ===
 def get_pricing():

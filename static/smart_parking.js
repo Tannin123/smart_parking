@@ -15,7 +15,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Sidebar menu active state
     const menuItems = document.querySelectorAll('.menu-item');
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+    const currentPage = window.location.pathname.split('/').pop() || 'dashboard.html';
 
     menuItems.forEach(item => {
         const href = item.getAttribute('onclick') || '';
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 result = await res.json();
                 if (result.success) {
-                    showStatus('✅ Cập nhật thành công!');
+                    showStatus('Cập nhật thành công!');
                     fetchPricing();
                     clearForm();
                 } else {
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 result = await res.json();
                 if (result.success) {
-                    showStatus('✅ Thêm loại xe mới thành công!');
+                    showStatus('Thêm loại xe mới thành công!');
                     fetchPricing();
                     clearForm();
                 } else {
